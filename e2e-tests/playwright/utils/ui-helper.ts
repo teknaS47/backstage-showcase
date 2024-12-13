@@ -45,9 +45,7 @@ export class UIhelper {
   }
 
   async checkCheckbox(text: string) {
-    const locator = this.page.getByRole("checkbox", {
-      name: text,
-    });
+    const locator = this.page.getByRole("checkbox", { name: text });
     await locator.check();
   }
 
@@ -124,10 +122,7 @@ export class UIhelper {
 
   async verifyLink(
     arg: string | { label: string },
-    options: {
-      exact?: boolean;
-      notVisible?: boolean;
-    } = {
+    options: { exact?: boolean; notVisible?: boolean } = {
       exact: true,
       notVisible: false,
     },
@@ -394,9 +389,7 @@ export class UIhelper {
   async verifyButtonURL(
     label: string | RegExp,
     url: string | RegExp,
-    options: { locator?: string } = {
-      locator: "",
-    },
+    options: { locator?: string } = { locator: "" },
   ) {
     const buttonUrl =
       options.locator == ""
@@ -411,6 +404,7 @@ export class UIhelper {
             .getAttribute("href");
     expect(buttonUrl).toContain(url);
   }
+  // locator('[data-test-id="topology-test"]').getByRole('button', { name: 'Open URL' })
 
   /**
    * Verifies that a table row, identified by unique text, contains specific cell texts.
@@ -584,10 +578,7 @@ export class UIhelper {
       await this.verifyCellsInTable([locationName]);
       await this.clickLink(locationName);
       await this.verifyHeading(locationName);
-    }).toPass({
-      intervals: [1_000, 2_000, 5_000],
-      timeout: 20 * 1000,
-    });
+    }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 20 * 1000 });
 
     await expect(
       this.page.locator(`button[title="Schedule entity refresh"]`),
