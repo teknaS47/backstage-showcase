@@ -5,7 +5,7 @@ export const HOME_PAGE_COMPONENTS = {
 
 export const SEARCH_OBJECTS_COMPONENTS = {
   ariaLabelSearch: 'input[aria-label="Search"]',
-  placeholderSearch: 'input[placeholder="Search"], input[placeholder="Filter"]',
+  placeholderSearch: 'input[placeholder="Search"]',
 };
 
 export const CATALOG_IMPORT_COMPONENTS = {
