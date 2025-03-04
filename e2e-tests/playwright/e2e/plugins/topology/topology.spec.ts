@@ -47,10 +47,9 @@ test.describe("Test Topology Plugin", () => {
       await expect(
         page
           .getByTestId("ingress-list")
-          .getByRole("link", { name: "topology-test-route" })
-          .first(),
+          .getByRole("link", { name: "topology-test-route" }),
       ).toBeVisible();
-      await expect(page.locator("pre").first()).toBeVisible();
+      await expect(page.locator("pre")).toBeVisible();
     } else {
       await uiHelper.verifyHeading("Routes");
       await uiHelper.verifyText("RT");
