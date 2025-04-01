@@ -1,6 +1,6 @@
 {
   "name": "e2e-tests",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Showcase E2E test",
   "main": "index.js",
   "type": "module",
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.51.1",
-    "@types/node": "22.13.13",
+    "@types/node": "22.13.14",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
     "eslint": "8.57.1",
