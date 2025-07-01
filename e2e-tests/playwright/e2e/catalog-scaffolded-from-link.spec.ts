@@ -4,6 +4,7 @@ import { Common, setupBrowser } from "../utils/common";
 import { CatalogImport } from "../support/pages/catalog-import";
 import { APIHelper } from "../utils/api-helper";
 import { GITHUB_API_ENDPOINTS } from "../utils/api-endpoints";
+import AxeBuilder from "@axe-core/playwright";
 
 let page: Page;
 
@@ -38,8 +39,19 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await common.loginAsGuest();
   });
 
-  test("Register an Template", async () => {
+  test("Register an Template", async ({ page }, testInfo) => {
     await uiHelper.openSidebar("Catalog");
+    await uiHelper.verifyText("Name");
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    await testInfo.attach("accessibility-scan-results.violaions.catalog", {
+      body: JSON.stringify(accessibilityScanResults.violations, null, 2),
+      contentType: "application/json",
+    });
+
     await uiHelper.clickButton("Self-service");
     await uiHelper.clickButton("Register Existing Component");
     await catalogImport.registerExistingComponent(template, false);

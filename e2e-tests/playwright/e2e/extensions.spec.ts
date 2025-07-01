@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { Common } from "../utils/common";
 import { UIhelper } from "../utils/ui-helper";
 import { Extensions } from "../support/pages/extensions";
+import AxeBuilder from "@axe-core/playwright";
 
 test.describe("Admin > Extensions > Catalog", () => {
   let extensions: Extensions;
@@ -23,8 +24,18 @@ test.describe("Admin > Extensions > Catalog", () => {
     await page.getByRole("button", { name: "Clear Search" }).click();
   });
 
-  test("Verify filters in extensions", async ({ page }) => {
+  test("Verify filters in extensions", async ({ page }, testInfo) => {
     await uiHelper.verifyHeading(/Plugins \(\d+\)/);
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    await testInfo.attach("accessibility-scan-results.violaions.extensions", {
+      body: JSON.stringify(accessibilityScanResults.violations, null, 2),
+      contentType: "application/json",
+    });
+
     await uiHelper.clickTab("Catalog");
     await uiHelper.clickButton("CI/CD");
     await extensions.selectDropdown("Category");
