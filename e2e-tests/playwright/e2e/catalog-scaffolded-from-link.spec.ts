@@ -1,6 +1,6 @@
 import { expect, Page, test } from "@playwright/test";
 import { UIhelper } from "../utils/ui-helper";
-import { Common, setupBrowser } from "../utils/common";
+import { Common } from "../utils/common";
 import { CatalogImport } from "../support/pages/catalog-import";
 import { APIHelper } from "../utils/api-helper";
 import { GITHUB_API_ENDPOINTS } from "../utils/api-endpoints";
@@ -29,9 +29,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     ).toString("utf8"), // Default repoOwner janus-qe
   };
 
-  test.beforeAll(async ({ browser }, testInfo) => {
-    page = (await setupBrowser(browser, testInfo)).page;
-
+  test.beforeEach(async ({ page }) => {
     common = new Common(page);
     uiHelper = new UIhelper(page);
     catalogImport = new CatalogImport(page);
@@ -39,8 +37,12 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await common.loginAsGuest();
   });
 
+<<<<<<< HEAD
   // eslint-disable-next-line no-empty-pattern
   test("Register a Template", async ({}, testInfo) => {
+=======
+  test("Register a Template", async ({ page }, testInfo) => {
+>>>>>>> 56c0d868 (refining accessibility tests)
     await uiHelper.openSidebar("Catalog");
     await uiHelper.verifyText("Name");
 
@@ -160,7 +162,6 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
         reactAppDetails.repo,
       ),
     );
-    await page.close();
   });
 
   async function clickOnScaffoldedFromLink() {
