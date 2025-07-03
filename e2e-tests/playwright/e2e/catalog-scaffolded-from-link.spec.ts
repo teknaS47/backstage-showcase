@@ -97,7 +97,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await uiHelper.openCatalogSidebar("Component");
 
     await uiHelper.searchInputPlaceholder("scaffoldedfromlink-\n");
-    await clickOnScaffoldedFromLink();
+    await clickOnScaffoldedFromLink(page);
 
     await uiHelper.clickTab("Dependencies");
 
@@ -164,7 +164,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     );
   });
 
-  async function clickOnScaffoldedFromLink() {
+  async function clickOnScaffoldedFromLink(page: Page) {
     const selector =
       'a[href*="/catalog/default/component/test-scaffoldedfromlink-"]';
     await page.locator(selector).first().waitFor({ state: "visible" });
