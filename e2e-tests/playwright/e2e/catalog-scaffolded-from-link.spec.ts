@@ -1,10 +1,10 @@
 import { expect, Page, test } from "@playwright/test";
 import { UIhelper } from "../utils/ui-helper";
-import { Common, setupBrowser } from "../utils/common";
+import { Common } from "../utils/common";
 import { CatalogImport } from "../support/pages/catalog-import";
 import { APIHelper } from "../utils/api-helper";
 import { GITHUB_API_ENDPOINTS } from "../utils/api-endpoints";
-import AxeBuilder from "@axe-core/playwright";
+import { runAccessibilityTests } from "../utils/accessibility";
 
 let page: Page;
 
@@ -29,9 +29,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     ).toString("utf8"), // Default repoOwner janus-qe
   };
 
-  test.beforeAll(async ({ browser }, testInfo) => {
-    page = (await setupBrowser(browser, testInfo)).page;
-
+  test.beforeEach(async ({ page }) => {
     common = new Common(page);
     uiHelper = new UIhelper(page);
     catalogImport = new CatalogImport(page);
@@ -39,18 +37,11 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await common.loginAsGuest();
   });
 
-  test("Register an Template", async ({ page }, testInfo) => {
+  test("Register a Template", async ({ page }, testInfo) => {
     await uiHelper.openSidebar("Catalog");
     await uiHelper.verifyText("Name");
 
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .disableRules(["color-contrast"])
-      .analyze();
-    await testInfo.attach("accessibility-scan-results.violaions.catalog", {
-      body: JSON.stringify(accessibilityScanResults.violations, null, 2),
-      contentType: "application/json",
-    });
+    await runAccessibilityTests(page, testInfo);
 
     await uiHelper.clickButton("Self-service");
     await uiHelper.clickButton("Register Existing Component");
@@ -166,7 +157,6 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
         reactAppDetails.repo,
       ),
     );
-    await page.close();
   });
 
   async function clickOnScaffoldedFromLink() {

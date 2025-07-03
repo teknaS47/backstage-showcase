@@ -2,7 +2,7 @@ import { test } from "@playwright/test";
 import { UIhelper } from "../utils/ui-helper";
 import { Common } from "../utils/common";
 import { HomePage } from "../support/pages/home-page";
-import AxeBuilder from "@axe-core/playwright";
+import { runAccessibilityTests } from "../utils/accessibility";
 
 test.describe("Home page customization", () => {
   let common: Common;
@@ -19,14 +19,7 @@ test.describe("Home page customization", () => {
   test("Verify that home page is customized", async ({ page }, testInfo) => {
     await uiHelper.verifyTextinCard("Quick Access", "Quick Access");
 
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .disableRules(["color-contrast"])
-      .analyze();
-    await testInfo.attach("accessibility-scan-results.violaions.homepage", {
-      body: JSON.stringify(accessibilityScanResults.violations, null, 2),
-      contentType: "application/json",
-    });
+    await runAccessibilityTests(page, testInfo);
 
     await uiHelper.verifyTextinCard(
       "Your Starred Entities",
