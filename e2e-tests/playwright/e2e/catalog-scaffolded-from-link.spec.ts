@@ -48,7 +48,9 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await catalogImport.registerExistingComponent(template, false);
   });
 
-  test("Create a React App using the newly registered Template", async () => {
+  test("Create a React App using the newly registered Template", async ({
+    page,
+  }) => {
     test.setTimeout(130000);
     await uiHelper.openSidebar("Catalog");
     await uiHelper.clickButton("Self-service");
