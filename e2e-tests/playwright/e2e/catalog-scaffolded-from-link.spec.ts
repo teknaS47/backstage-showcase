@@ -1,6 +1,6 @@
 import { expect, Page, test } from "@playwright/test";
 import { UIhelper } from "../utils/ui-helper";
-import { Common } from "../utils/common";
+import { Common, setupBrowser } from "../utils/common";
 import { CatalogImport } from "../support/pages/catalog-import";
 import { APIHelper } from "../utils/api-helper";
 import { GITHUB_API_ENDPOINTS } from "../utils/api-endpoints";
@@ -29,7 +29,9 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     ).toString("utf8"), // Default repoOwner janus-qe
   };
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ browser }, testInfo) => {
+    page = (await setupBrowser(browser, testInfo)).page;
+
     common = new Common(page);
     uiHelper = new UIhelper(page);
     catalogImport = new CatalogImport(page);
@@ -38,11 +40,16 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
   });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   // eslint-disable-next-line no-empty-pattern
   test("Register a Template", async ({}, testInfo) => {
 =======
   test("Register a Template", async ({ page }, testInfo) => {
 >>>>>>> 56c0d868 (refining accessibility tests)
+=======
+  // eslint-disable-next-line no-empty-pattern
+  test("Register a Template", async ({}, testInfo) => {
+>>>>>>> 9dd9a7b7 (fix test)
     await uiHelper.openSidebar("Catalog");
     await uiHelper.verifyText("Name");
 
@@ -97,7 +104,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await uiHelper.openCatalogSidebar("Component");
 
     await uiHelper.searchInputPlaceholder("scaffoldedfromlink-\n");
-    await clickOnScaffoldedFromLink(page);
+    await clickOnScaffoldedFromLink();
 
     await uiHelper.clickTab("Dependencies");
 
@@ -162,9 +169,10 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
         reactAppDetails.repo,
       ),
     );
+    await page.close();
   });
 
-  async function clickOnScaffoldedFromLink(page: Page) {
+  async function clickOnScaffoldedFromLink() {
     const selector =
       'a[href*="/catalog/default/component/test-scaffoldedfromlink-"]';
     await page.locator(selector).first().waitFor({ state: "visible" });
