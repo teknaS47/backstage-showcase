@@ -1,6 +1,6 @@
 import { expect, Page, test } from "@playwright/test";
 import { UIhelper } from "../utils/ui-helper";
-import { Common } from "../utils/common";
+import { Common, setupBrowser } from "../utils/common";
 import { CatalogImport } from "../support/pages/catalog-import";
 import { APIHelper } from "../utils/api-helper";
 import { GITHUB_API_ENDPOINTS } from "../utils/api-endpoints";
@@ -29,7 +29,9 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     ).toString("utf8"), // Default repoOwner janus-qe
   };
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ browser }, testInfo) => {
+    page = (await setupBrowser(browser, testInfo)).page;
+
     common = new Common(page);
     uiHelper = new UIhelper(page);
     catalogImport = new CatalogImport(page);
@@ -37,7 +39,8 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await common.loginAsGuest();
   });
 
-  test("Register a Template", async ({ page }, testInfo) => {
+  // eslint-disable-next-line no-empty-pattern
+  test("Register a Template", async ({}, testInfo) => {
     await uiHelper.openSidebar("Catalog");
     await uiHelper.verifyText("Name");
 
@@ -48,9 +51,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await catalogImport.registerExistingComponent(template, false);
   });
 
-  test("Create a React App using the newly registered Template", async ({
-    page,
-  }) => {
+  test("Create a React App using the newly registered Template", async () => {
     test.setTimeout(130000);
     await uiHelper.openSidebar("Catalog");
     await uiHelper.clickButton("Self-service");
@@ -94,7 +95,7 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await uiHelper.openCatalogSidebar("Component");
 
     await uiHelper.searchInputPlaceholder("scaffoldedfromlink-\n");
-    await clickOnScaffoldedFromLink(page);
+    await clickOnScaffoldedFromLink();
 
     await uiHelper.clickTab("Dependencies");
 
@@ -159,9 +160,10 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
         reactAppDetails.repo,
       ),
     );
+    await page.close();
   });
 
-  async function clickOnScaffoldedFromLink(page: Page) {
+  async function clickOnScaffoldedFromLink() {
     const selector =
       'a[href*="/catalog/default/component/test-scaffoldedfromlink-"]';
     await page.locator(selector).first().waitFor({ state: "visible" });
