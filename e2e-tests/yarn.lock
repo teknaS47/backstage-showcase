@@ -2091,10 +2091,7 @@ __metadata:
   resolution: "e2e-tests@workspace:."
   dependencies:
     "@axe-core/playwright": ^4.10.2
-<<<<<<< HEAD
     "@azure/arm-network": ^34.0.0
-=======
->>>>>>> 97348f01 (adding accessibility tests)
     "@azure/identity": 4.9.1
     "@keycloak/keycloak-admin-client": 25.0.6
     "@kubernetes/client-node": 0.22.3

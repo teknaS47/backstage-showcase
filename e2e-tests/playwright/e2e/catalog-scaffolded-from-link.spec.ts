@@ -39,17 +39,8 @@ test.describe.serial("Link Scaffolded Templates to Catalog Items", () => {
     await common.loginAsGuest();
   });
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   // eslint-disable-next-line no-empty-pattern
   test("Register a Template", async ({}, testInfo) => {
-=======
-  test("Register a Template", async ({ page }, testInfo) => {
->>>>>>> 56c0d868 (refining accessibility tests)
-=======
-  // eslint-disable-next-line no-empty-pattern
-  test("Register a Template", async ({}, testInfo) => {
->>>>>>> 9dd9a7b7 (fix test)
     await uiHelper.openSidebar("Catalog");
     await uiHelper.verifyText("Name");
 
