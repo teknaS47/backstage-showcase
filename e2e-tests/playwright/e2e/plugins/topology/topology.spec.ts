@@ -27,6 +27,16 @@ test.describe("Test Topology Plugin", () => {
     await uiHelper.clickTab("Topology");
     await uiHelper.verifyText("backstage-janus");
     await page.getByRole("button", { name: "Fit to Screen" }).click();
+    await page
+      .locator('[data-test-id="topology-test"]')
+      .getByTestId(/(status-error|status-ok)/)
+      .click();
+    await uiHelper.verifyDivHasText(
+      /Pipeline (Succeeded|Failed|Cancelled|Running)/,
+    );
+    await uiHelper.verifyDivHasText("Task status");
+    await uiHelper.verifyDivHasText(/\d+ (Succeeded|Failed|Cancelled|Running)/);
+    await uiHelper.verifyText(/Pipeline (Succeeded|Failed|Cancelled|Running)/);
     await topology.verifyDeployment("topology-test");
     await uiHelper.verifyButtonURL("Open URL", "topology-test-route", {
       locator: `[data-test-id="topology-test"]`,
@@ -83,15 +93,5 @@ test.describe("Test Topology Plugin", () => {
     await uiHelper.verifyHeading("PipelineRuns");
     await uiHelper.verifyText("PL");
     await uiHelper.verifyText("PLR");
-    await page
-      .locator('[data-test-id="topology-test"]')
-      .getByTestId(/(status-error|status-ok)/)
-      .click();
-    await uiHelper.verifyDivHasText(
-      /Pipeline (Succeeded|Failed|Cancelled|Running)/,
-    );
-    await uiHelper.verifyDivHasText("Task status");
-    await uiHelper.verifyDivHasText(/\d+ (Succeeded|Failed|Cancelled|Running)/);
-    await uiHelper.verifyText(/Pipeline (Succeeded|Failed|Cancelled|Running)/);
   });
 });
