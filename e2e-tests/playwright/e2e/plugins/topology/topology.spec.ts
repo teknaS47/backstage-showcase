@@ -30,6 +30,7 @@ test.describe("Test Topology Plugin", () => {
     await page
       .locator('[data-test-id="topology-test"]')
       .getByTestId(/(status-error|status-ok)/)
+      .first()
       .click();
     await uiHelper.verifyDivHasText(
       /Pipeline (Succeeded|Failed|Cancelled|Running)/,
