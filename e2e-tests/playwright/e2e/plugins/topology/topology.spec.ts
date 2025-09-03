@@ -43,7 +43,6 @@ test.describe("Test Topology Plugin", () => {
       /Pipeline (Succeeded|Failed|Cancelled|Running)/,
     );
     await uiHelper.verifyDivHasText(/\d+ (Succeeded|Failed|Cancelled|Running)/);
-    await uiHelper.verifyText(/Pipeline (Succeeded|Failed|Cancelled|Running)/);
     await topology.verifyDeployment("topology-test");
     await uiHelper.verifyButtonURL("Open URL", "topology-test-route", {
       locator: `[data-test-id="topology-test"]`,
@@ -100,5 +99,6 @@ test.describe("Test Topology Plugin", () => {
     await uiHelper.verifyHeading("PipelineRuns");
     await uiHelper.verifyText("PL");
     await uiHelper.verifyText("PLR");
+    await uiHelper.verifyText(/Pipeline (Succeeded|Failed|Cancelled|Running)/);
   });
 });
