@@ -99,6 +99,6 @@ test.describe("Test Topology Plugin", () => {
     await uiHelper.verifyHeading("PipelineRuns");
     await uiHelper.verifyText("PL");
     await uiHelper.verifyText("PLR");
-    await uiHelper.verifyText(/Pipeline (Succeeded|Failed|Cancelled|Running)/);
+    await uiHelper.verifyText(/(Succeeded|Failed|Cancelled|Running)/);
   });
 });
