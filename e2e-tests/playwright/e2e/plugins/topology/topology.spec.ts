@@ -81,9 +81,11 @@ test.describe("Test Topology Plugin", () => {
     await page.getByLabel("Pod count").click();
     await uiHelper.verifyText("1");
     await uiHelper.verifyText("Pod");
+
     // await topology.hoverOnPodStatusIndicator();
     // await uiHelper.verifyTextInTooltip("Running");
     // await uiHelper.verifyText("1Running");
+
     await uiHelper.verifyButtonURL(
       "Edit source code",
       "https://github.com/janus-idp/backstage-showcase",
