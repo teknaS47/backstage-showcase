@@ -17,9 +17,6 @@ test.describe(`RHDH Localization - ${t.settings.rhdhLanguage}`, () => {
   test(`Should display correct language section ARIA content in ${t.settings.rhdhLanguage}`, async ({
     page,
   }) => {
-    const enterButton = page.getByRole("button", { name: "Enter" });
-    await expect(enterButton).toBeVisible();
-    await enterButton.click();
     await page.getByRole("button", { name: "Hide" }).click();
     await expect(page.getByRole("list").first()).toMatchAriaSnapshot(`
     - listitem:
