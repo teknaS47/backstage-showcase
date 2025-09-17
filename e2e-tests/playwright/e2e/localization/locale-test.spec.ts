@@ -27,5 +27,10 @@ test.describe(`RHDH Localization - ${t.settings.rhdhLanguage}`, () => {
     await expect(page.getByTestId("select").locator("div")).toContainText(
       t.settings.rhdhLanguage,
     );
+    await page.getByRole("button", { name: "English" }).click();
+    await page.getByRole("option", { name: "Français" }).click();
+    await expect(page.getByTestId("select").locator("div")).toContainText(
+      "Français",
+    );
   });
 });

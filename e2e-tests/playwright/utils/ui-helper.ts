@@ -226,13 +226,13 @@ export class UIhelper {
   async goToSettingsPage() {
     await expect(this.page.locator("nav[id='global-header']")).toBeVisible();
     await this.openProfileDropdown();
-    await this.clickLink({ href: "/settings" });
+    await this.page.getByRole("menuitem", { name: "Settings" }).click();
   }
 
   async goToMyProfilePage() {
     await expect(this.page.locator("nav[id='global-header']")).toBeVisible();
     await this.openProfileDropdown();
-    await this.clickLink("My profile");
+    await this.page.getByRole("menuitem", { name: "My profile" }).click();
   }
 
   async verifyLink(
