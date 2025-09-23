@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { getTranslations } from "../../support/translations/settings";
+import {
+  getTranslations,
+  getLocale,
+} from "../../support/translations/settings";
 import { Common } from "../../utils/common";
 import { UIhelper } from "../../utils/ui-helper";
 
@@ -27,10 +30,19 @@ test.describe(`RHDH Localization - ${t.settings.rhdhLanguage}`, () => {
     await expect(page.getByTestId("select").locator("div")).toContainText(
       t.settings.rhdhLanguage,
     );
-    await page.getByRole("button", { name: "English" }).click();
-    await page.getByRole("option", { name: "Français" }).click();
+    await page.getByRole("button", { name: t.settings.rhdhLanguage }).click();
+    await expect(page.getByRole("listbox")).toMatchAriaSnapshot(`
+    - listbox:
+      - option "English"
+      - option "Français"
+      - option "Deutsch"
+    `);
+    const french = getLocale("fr");
+    await page
+      .getByRole("option", { name: french.settings.rhdhLanguage })
+      .click();
     await expect(page.getByTestId("select").locator("div")).toContainText(
-      "Français",
+      french.settings.rhdhLanguage,
     );
   });
 });
