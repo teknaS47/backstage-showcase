@@ -3204,13 +3204,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage-community/plugin-analytics-provider-segment@npm:1.16.0":
-  version: 1.16.0
-  resolution: "@backstage-community/plugin-analytics-provider-segment@npm:1.16.0"
+"@backstage-community/plugin-analytics-provider-segment@npm:1.17.0":
+  version: 1.17.0
+  resolution: "@backstage-community/plugin-analytics-provider-segment@npm:1.17.0"
   dependencies:
     "@backstage/config": ^1.3.2
-    "@backstage/core-components": ^0.17.2
-    "@backstage/core-plugin-api": ^1.10.7
+    "@backstage/core-components": ^0.17.3
+    "@backstage/core-plugin-api": ^1.10.8
     "@backstage/theme": ^0.6.6
     "@material-ui/core": ^4.9.13
     "@material-ui/icons": ^4.11.3
@@ -3222,7 +3222,7 @@ __metadata:
     react: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-dom: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-router-dom: ^6.0.0
-  checksum: e3b735ab3b553edc0424093422559edffac0f776f38478c2895bc45259fe549be4dda29e9e3c4c3343a082efb1f95f1892936edf1235b8b0c8209d3c6006f678
+  checksum: 02a23f61dd74720a59fbcb0ae323d2e18aecf6b36ad25ac8ab5df0776e16c12ac7ae1d723e19c0a5f6efa43c9ed44318e269e5e976ab75694cfd6e2095fff24b
   languageName: node
   linkType: hard
 
@@ -17803,13 +17803,13 @@ __metadata:
   linkType: hard
 
 "axios@npm:^1.0.0, axios@npm:^1.6.7, axios@npm:^1.7.4":
-  version: 1.10.0
-  resolution: "axios@npm:1.10.0"
+  version: 1.12.2
+  resolution: "axios@npm:1.12.2"
   dependencies:
     follow-redirects: ^1.15.6
-    form-data: ^4.0.0
+    form-data: ^4.0.4
     proxy-from-env: ^1.1.0
-  checksum: b5fd840d499469bf968e44b8ac96f4b363c6aa4c791a50834c086a7cffbc2d77fe24f27af1aba46c3e1f4840aaf991461fc27537990596b93dea0f4df3245a86
+  checksum: f0331594fe053a4bbff04104edb073973a3aabfad2e56b0aa18de82428aa63f6f0839ca3d837258ec739cb4528014121793b1649a21e5115ffb2bf8237eadca3
   languageName: node
   linkType: hard
 
@@ -18036,7 +18036,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "backstage-community-plugin-analytics-provider-segment@workspace:wrappers/backstage-community-plugin-analytics-provider-segment"
   dependencies:
-    "@backstage-community/plugin-analytics-provider-segment": 1.16.0
+    "@backstage-community/plugin-analytics-provider-segment": 1.17.0
     "@backstage/cli": 0.30.0
     "@janus-idp/cli": 3.6.1
     typescript: 5.9.2
@@ -24018,7 +24018,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:^4.0.0":
+"form-data@npm:^4.0.0, form-data@npm:^4.0.4":
   version: 4.0.4
   resolution: "form-data@npm:4.0.4"
   dependencies:
