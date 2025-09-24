@@ -13,7 +13,7 @@ test.describe(`RHDH Localization - ${t.settings.rhdhLanguage}`, () => {
     const common = new Common(page);
     const uiHelper = new UIhelper(page);
     await common.loginAsGuest();
-    await uiHelper.goToSettingsPage();
+    await uiHelper.goToPageUrl("/settings", "Settings");
   });
 
   // Run tests only for the selected language
