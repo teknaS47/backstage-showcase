@@ -75,6 +75,7 @@ export default defineConfig({
         "**/playwright/e2e/**/*-rbac.spec.ts",
         "**/playwright/e2e/verify-tls-config-with-external-postgres-db.spec.ts",
         "**/playwright/e2e/plugins/bulk-import.spec.ts",
+        "**/playwright/e2e/plugins/quick-start.spec.ts",
       ],
     },
     {
