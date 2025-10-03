@@ -44,6 +44,7 @@ test.describe("Test Quick Start plugin", () => {
     await uiHelper.verifyButtonURL(
       "Learn more",
       "https://docs.redhat.com/en/documentation/red_hat_developer_hub/latest/html/authentication_in_red_hat_developer_hub/",
+      { exact: false },
     );
     await uiHelper.clickButtonByText("Configure RBAC");
     await uiHelper.verifyButtonURL("Manage access", "/rbac");
@@ -51,6 +52,7 @@ test.describe("Test Quick Start plugin", () => {
     await uiHelper.verifyButtonURL(
       "Learn more",
       "https://docs.redhat.com/en/documentation/red_hat_developer_hub/latest/html/integrating_red_hat_developer_hub_with_github/",
+      { exact: false },
     );
     await uiHelper.clickButtonByText("Manage plugins");
     await uiHelper.verifyButtonURL("Explore plugins", "/extensions");

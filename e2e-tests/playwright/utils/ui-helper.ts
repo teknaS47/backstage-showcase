@@ -534,7 +534,9 @@ export class UIhelper {
   ) {
     // To verify the button URL if it is in a specific locator
     const baseLocator =
-      options.locator === "" ? this.page : this.page.locator(options.locator);
+      !options.locator || options.locator === ""
+        ? this.page
+        : this.page.locator(options.locator);
 
     const buttonUrl = await baseLocator
       .getByRole("button", { name: label, exact: options.exact })
