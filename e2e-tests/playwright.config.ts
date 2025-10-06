@@ -107,6 +107,7 @@ export default defineConfig({
         "**/playwright/e2e/verify-tls-config-health-check.spec.ts",
         "**/playwright/e2e/configuration-test/config-map.spec.ts",
         "**/playwright/e2e/github-happy-path.spec.ts",
+        "**/playwright/e2e/plugins/scorecard/scorecard.spec.ts",
       ],
     },
     {
@@ -117,6 +118,7 @@ export default defineConfig({
         "**/playwright/e2e/plugins/rbac/**/*.spec.ts",
         "**/playwright/e2e/**/*-rbac.spec.ts",
         "**/playwright/e2e/plugins/bulk-import.spec.ts",
+        "**/playwright/e2e/plugins/scorecard/scorecard.spec.ts",
       ],
     },
     {
@@ -133,6 +135,7 @@ export default defineConfig({
         "**/playwright/e2e/verify-tls-config-health-check.spec.ts",
         "**/playwright/e2e/configuration-test/config-map.spec.ts",
         "**/playwright/e2e/github-happy-path.spec.ts",
+        "**/playwright/e2e/plugins/scorecard/scorecard.spec.ts",
       ],
     },
     {
@@ -141,6 +144,7 @@ export default defineConfig({
         "**/playwright/e2e/plugins/rbac/**/*.spec.ts",
         "**/playwright/e2e/**/*-rbac.spec.ts",
         "**/playwright/e2e/plugins/bulk-import.spec.ts",
+        "**/playwright/e2e/plugins/scorecard/scorecard.spec.ts",
       ],
     },
     {
