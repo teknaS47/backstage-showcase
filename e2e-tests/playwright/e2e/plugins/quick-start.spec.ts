@@ -89,7 +89,8 @@ test.describe("Test Quick Start plugin", () => {
     await uiHelper.verifyText("Self-service");
     await uiHelper.clickButtonByText("Find all Learning Paths");
     await uiHelper.verifyButtonURL("View Learning Paths", "/docs");
-    await uiHelper.clickButtonByText("Documentation");
+    await uiHelper.clickButtonByText("View Learning Paths");
+    await uiHelper.verifyText("Documentation");
     await uiHelper.verifyText("75% progress");
   });
 });
