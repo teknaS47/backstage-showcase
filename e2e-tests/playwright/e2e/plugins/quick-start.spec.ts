@@ -83,7 +83,7 @@ test.describe("Test Quick Start plugin", () => {
     await uiHelper.verifyButtonURL("View Catalog", "/catalog");
     await uiHelper.clickButtonByText("View Catalog");
     await uiHelper.verifyText(/All components \((\d+)\)/);
-    await uiHelper.clickButtonByText("Explore Self-service");
+    await uiHelper.clickButtonByText("Explore Self-service templates");
     await uiHelper.verifyButtonURL("Explore templates", "/create");
     await uiHelper.clickButtonByText("Explore templates");
     await uiHelper.verifyText("Self-service");
