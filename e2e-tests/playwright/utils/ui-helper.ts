@@ -51,6 +51,13 @@ export class UIhelper {
     await locator.check();
   }
 
+  async uncheckCheckbox(text: string) {
+    const locator = this.page.getByRole("checkbox", {
+      name: text,
+    });
+    await locator.uncheck();
+  }
+
   async clickButton(
     label: string | RegExp,
     options: { exact?: boolean; force?: boolean } = {
@@ -302,8 +309,12 @@ export class UIhelper {
     return await this.isElementVisible(locator, timeout);
   }
 
-  async verifyTextVisible(text: string, timeout = 10000): Promise<void> {
-    const locator = this.page.getByText(text);
+  async verifyTextVisible(
+    text: string,
+    exact = false,
+    timeout = 10000,
+  ): Promise<void> {
+    const locator = this.page.getByText(text, { exact });
     await expect(locator).toBeVisible({ timeout });
   }
 
