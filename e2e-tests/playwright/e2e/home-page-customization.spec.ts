@@ -3,13 +3,6 @@ import { UIhelper } from "../utils/ui-helper";
 import { Common } from "../utils/common";
 import { HomePage } from "../support/pages/home-page";
 import { runAccessibilityTests } from "../utils/accessibility";
-import {
-  getTranslations,
-  getCurrentLanguage,
-} from "../e2e/localization/locale";
-
-const t = getTranslations();
-const lang = getCurrentLanguage();
 
 test.describe("Home page customization", () => {
   let common: Common;
@@ -31,10 +24,7 @@ test.describe("Home page customization", () => {
   });
 
   test("Verify that home page is customized", async ({ page }, testInfo) => {
-    await uiHelper.verifyTextinCard(
-      t["plugin.homepage"][lang]["quickAccess.title"],
-      t["plugin.homepage"][lang]["quickAccess.title"],
-    );
+    await uiHelper.verifyTextinCard("Quick Access", "Quick Access");
 
     await runAccessibilityTests(page, testInfo);
 

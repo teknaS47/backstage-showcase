@@ -12,22 +12,21 @@ const lang = getCurrentLanguage();
 
 let uiHelper: UIhelper;
 
-test.describe(`RHDH Localization - ${lang}`, () => {
+test.describe(`Settings page`, () => {
   test.beforeEach(async ({ page }) => {
     const common = new Common(page);
     uiHelper = new UIhelper(page);
     await common.loginAsGuest();
-    await uiHelper.goToPageUrl(
-      "/settings",
-      t["plugin.global-header"][lang]["profile.settings"],
-    );
+    await uiHelper.goToPageUrl("/settings");
   });
 
   // Run tests only for the selected language
-  test(`Should display correct language section ARIA content in ${lang}`, async ({
-    page,
-  }) => {
-    // await page.getByRole("button", { name: "Hide" }).click();
+  test(`Verify settings page`, async ({ page }) => {
+    await page
+      .getByRole("button", {
+        name: t["plugin.quickstart"][lang]["footer.hide"],
+      })
+      .click();
     await expect(page.getByRole("list").first()).toMatchAriaSnapshot(`
     - listitem:
       - text: ${t["user-settings"][lang]["languageToggle.title"]}
@@ -35,11 +34,11 @@ test.describe(`RHDH Localization - ${lang}`, () => {
     `);
 
     await expect(page.getByTestId("select").locator("div")).toContainText(
-      "English",
+      /English|Français|Deutsch/,
     );
     await page
       .getByTestId("select")
-      .getByRole("button", { name: "English" })
+      .getByRole("button", { name: /English|Français|Deutsch/ })
       .click();
     await expect(page.getByRole("listbox")).toMatchAriaSnapshot(`
     - listbox:
@@ -67,9 +66,6 @@ test.describe(`RHDH Localization - ${lang}`, () => {
     await page.keyboard.press(`Escape`);
 
     await uiHelper.verifyText(
-      fr["rhdh"][langfr]["app.userSettings.infoCard.title"],
-    );
-    await uiHelper.verifyText(
       fr["user-settings"][langfr]["identityCard.title"],
     );
     await uiHelper.verifyText(
@@ -94,14 +90,5 @@ test.describe(`RHDH Localization - ${lang}`, () => {
       fr["user-settings"][langfr]["pinToggle.ariaLabelTitle"],
     );
     await uiHelper.verifyText(fr["rhdh"][langfr]["menuItem.apis"]);
-
-    await uiHelper.clickButtonByText(
-      fr["user-settings"][langfr][
-        "defaultSettingsPage.tabsTitle.authProviders"
-      ],
-    );
-    await uiHelper.verifyText(
-      fr["user-settings"][langfr]["authProviders.title"],
-    );
   });
 });

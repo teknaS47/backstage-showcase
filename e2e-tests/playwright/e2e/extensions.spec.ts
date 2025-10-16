@@ -54,7 +54,7 @@ test.describe("Admin > Extensions > Catalog", () => {
   });
 
   test("Verify search bar in extensions", async ({ page }) => {
-    await uiHelper.searchInputPlaceholder("Dynatrace");
+    await uiHelper.searchInputAriaLabel("Dynatrace");
     await uiHelper.verifyHeading("DynaTrace");
     await page
       .getByRole("button", {
@@ -88,24 +88,24 @@ test.describe("Admin > Extensions > Catalog", () => {
     );
     await page.getByRole("heading", { name: "Red Hat Argo CD" }).click();
     await uiHelper.verifyTableHeadingAndRows([
-      t["plugin.marketplace"][lang]["table.packageName"],
-      t["plugin.marketplace"][lang]["table.version"],
-      t["plugin.marketplace"][lang]["table.role"],
+      "Package name",
+      "Version",
+      "Role",
       "Backstage compatibility version",
-      t["plugin.marketplace"][lang]["table.status"],
+      "Status",
     ]);
     await uiHelper.verifyHeading(
       t["plugin.marketplace"][lang]["metadata.versions"],
     );
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await uiHelper.clickLink(t["plugin.marketplace"][lang]["common.readMore"]);
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await extensions.selectDropdown(
@@ -175,7 +175,7 @@ test.describe("Admin > Extensions > Catalog", () => {
     await page.getByRole("heading", { name: "DynaTrace" }).first().click();
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await uiHelper.clickLink(t["plugin.marketplace"][lang]["common.readMore"]);
@@ -194,15 +194,15 @@ test.describe("Admin > Extensions > Catalog", () => {
       t["plugin.marketplace"][lang]["metadata.versions"],
     );
     await uiHelper.verifyTableHeadingAndRows([
-      t["plugin.marketplace"][lang]["table.packageName"],
-      t["plugin.marketplace"][lang]["table.version"],
-      t["plugin.marketplace"][lang]["table.role"],
+      "Package name",
+      "Version",
+      "Role",
       "Backstage compatibility version",
-      t["plugin.marketplace"][lang]["table.status"],
+      "Status",
     ]);
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await extensions.selectDropdown(
@@ -256,7 +256,7 @@ test.describe("Admin > Extensions > Catalog", () => {
 
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
 
@@ -300,7 +300,7 @@ test.describe("Admin > Extensions > Catalog", () => {
     ).toBeVisible();
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await extensions.selectDropdown(
@@ -315,11 +315,11 @@ test.describe("Admin > Extensions > Catalog", () => {
   test("Verify tech preview badge in extensions", async () => {
     await extensions.verifySupportTypeBadge({
       supportType: t["plugin.marketplace"][lang]["badges.techPreview"],
-      pluginName: t["plugin.marketplace"][lang]["menuItem.bulkImport"],
+      pluginName: "Bulk Import",
       badgeLabel: t["plugin.marketplace"][lang]["badges.pluginInDevelopment"],
       badgeText: t["plugin.marketplace"][lang]["badges.techPreview"],
       tooltipText: "",
-      searchTerm: t["plugin.marketplace"][lang]["menuItem.bulkImport"],
+      searchTerm: "Bulk Import",
       headings: [
         t["plugin.marketplace"][lang]["metadata.about"],
         t["plugin.marketplace"][lang]["metadata.versions"],
@@ -379,7 +379,7 @@ test.describe("Admin > Extensions > Catalog", () => {
 
     await page
       .getByRole("button", {
-        name: t["plugin.marketplace"][lang]["button.close"],
+        name: "close",
       })
       .click();
     await extensions.resetSupportTypeFilter(

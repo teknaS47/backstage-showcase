@@ -47,7 +47,9 @@ test.describe("Test timestamp column on Catalog", () => {
 
   test("Import an existing Git repository and verify `Created At` column and value in the Catalog Page", async () => {
     await uiHelper.clickButton(t["rhdh"][lang]["menuItem.selfService"]);
-    await uiHelper.clickButton("Import an existing Git repository");
+    await uiHelper.clickButton(
+      t["catalog-import-test"][lang]["buttons.importExistingGitRepository"],
+    );
     await catalogImport.registerExistingComponent(component);
     await uiHelper.openCatalogSidebar("Component");
     await uiHelper.searchInputPlaceholder("timestamp-test-created");
@@ -69,7 +71,7 @@ test.describe("Test timestamp column on Catalog", () => {
 
     const column = page
       .locator(`${UI_HELPER_ELEMENTS.MuiTableHead}`)
-      .getByText(t["rhdh"][lang]["app.table.createdAt"], { exact: true });
+      .getByText("Created At", { exact: true });
     await column.dblclick(); // Double click to Toggle into decending order.
     await expect(page.locator(createdAtFirstRow)).not.toBeEmpty();
   });

@@ -1063,6 +1063,11 @@
       "stepReviewLocation.import": "Import"
     }
   },
+  "catalog-import-test": {
+    "en": {
+      "buttons.importExistingGitRepository": "Import an existing Git repository"
+    }
+  },
   "plugin.translations": {
     "en": {
       "page.title": "Translations",
