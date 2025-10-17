@@ -92,6 +92,6 @@ test.describe(`Settings page`, () => {
     await uiHelper.checkCheckbox(
       fr["user-settings"][langfr]["pinToggle.ariaLabelTitle"],
     );
-    await uiHelper.verifyText(fr["rhdh"][langfr]["menuItem.apis"]);
+    await uiHelper.verifyText(fr["rhdh"][langfr]["menuItem.home"]);
   });
 });

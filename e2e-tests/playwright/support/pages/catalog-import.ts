@@ -72,7 +72,7 @@ export class CatalogImport {
       );
       expect(
         await this.uiHelper.isBtnVisible(
-          t["catalog-import"][lang]["stepReviewLocation.import"],
+          t["catalog-import"][lang]["stepFinishImportLocation.backButtonText"],
         ),
       ).toBeTruthy();
     } else {

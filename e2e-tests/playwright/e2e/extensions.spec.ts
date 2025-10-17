@@ -70,7 +70,7 @@ test.describe("Admin > Extensions > Catalog", () => {
 
     await runAccessibilityTests(page, testInfo);
 
-    await uiHelper.clickTab(t["plugin.marketplace"][lang]["header.catalog"]);
+    await uiHelper.clickTab(t["plugin.marketplace"][lang]["menuItem.catalog"]);
     await extensions.selectDropdown(
       t["plugin.marketplace"][lang]["search.category"],
     );
