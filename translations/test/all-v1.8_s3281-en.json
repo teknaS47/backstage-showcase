@@ -358,6 +358,7 @@
       "button.save": "Save",
       "button.close": "Close",
       "button.viewAll": "View all plugins",
+      "table.pagination.rows": "rows",
       "button.viewDocumentation": "View documentation",
       "button.viewInstalledPlugins": "View installed plugins ({{count}})",
       "button.restart": "Restart required",

@@ -77,7 +77,7 @@ export class CatalogImport {
       ).toBeTruthy();
     } else {
       await this.uiHelper.clickButton(
-        t["catalog-import"][lang]["stepFinishImportLocation.import"],
+        t["catalog-import"][lang]["stepReviewLocation.import"],
       );
       if (clickViewComponent) {
         await this.uiHelper.clickButton(
