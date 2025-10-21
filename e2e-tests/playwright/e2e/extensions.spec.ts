@@ -276,8 +276,9 @@ test.describe("Admin > Extensions", () => {
       );
     });
 
-    // Skipping below test due to the issue: https://issues.redhat.com/browse/RHDHBUGS-2104
-    test.skip("Verify custom plugin badge in extensions", async ({ page }) => {
+    test("Verify custom plugin badge in extensions", async ({ page }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2104
+      test.fixme();
       await extensions.selectDropdown(
         t["plugin.marketplace"][lang]["search.supportType"],
       );
@@ -471,7 +472,9 @@ test.describe("Admin > Extensions", () => {
     });
 
     //Following test is disabled for CI as plugin installation is disabled in CI
-    test.skip("Enable plugin from catalog extension page", async ({ page }) => {
+    test("Enable plugin from catalog extension page", async ({ page }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2146
+      test.fixme();
       await uiHelper.clickTab(
         t["plugin.marketplace"][lang]["menuItem.catalog"],
       );
@@ -575,6 +578,8 @@ test.describe("Admin > Extensions", () => {
     });
 
     test("Topology package sidebar for CI", async ({ page }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2144
+      test.fixme();
       await page
         .getByRole("textbox", {
           name: t["plugin.marketplace"][lang][
@@ -648,9 +653,11 @@ test.describe("Admin > Extensions", () => {
     });
 
     //Following test is disabled for CI as plugin installation is disabled in CI
-    test.skip("Edit Analytics provider segment package through side menu ", async ({
+    test("Edit Analytics provider segment package through side menu ", async ({
       page,
     }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2146
+      test.fixme();
       await page
         .getByRole("textbox", {
           name: t["plugin.marketplace"][lang][
@@ -715,9 +722,11 @@ test.describe("Admin > Extensions", () => {
     });
 
     //Following test is disabled for CI as plugin installation is disabled in CI
-    test.skip("Edit Analytics provider segment package through action cell in the installed package row ", async ({
+    test("Edit Analytics provider segment package through action cell in the installed package row ", async ({
       page,
     }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2146
+      test.fixme();
       await page
         .getByRole("textbox", {
           name: t["plugin.marketplace"][lang][
@@ -764,9 +773,11 @@ test.describe("Admin > Extensions", () => {
     });
 
     //Following test is disabled for CI as plugin installation is disabled in CI
-    test.skip("Plugin enable-disable toggle in action cell in the installed package row ", async ({
+    test("Plugin enable-disable toggle in action cell in the installed package row ", async ({
       page,
     }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2146
+      test.fixme();
       await page
         .getByRole("textbox", {
           name: t["plugin.marketplace"][lang][

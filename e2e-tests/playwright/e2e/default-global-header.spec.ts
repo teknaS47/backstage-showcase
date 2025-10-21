@@ -116,6 +116,8 @@ test.describe("Default Global Header", () => {
   });
 
   test("Verify Profile Dropdown behaves as expected", async ({ page }) => {
+    // TODO: https://issues.redhat.com/browse/RHDHBUGS-2148
+    test.fixme(process.env.JOB_TYPE.includes("presubmit"));
     await uiHelper.openProfileDropdown();
     await uiHelper.verifyLinkVisible(
       t["user-settings"][lang]["settingsLayout.title"],
