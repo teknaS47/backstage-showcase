@@ -1,0 +1,4 @@
+# Localization FR specific configuration
+# This file contains minimal configuration for localization-fr tests
+# The tests run against the same deployment as standard tests but with French locale
+# No specific overrides needed - uses the same configuration as standard tests

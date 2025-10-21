@@ -38,6 +38,8 @@ HELM_CHART_EKS_DIFF_VALUE_FILE_NAME="diff-values_showcase_EKS.yaml"
 HELM_CHART_RBAC_EKS_DIFF_VALUE_FILE_NAME="diff-values_showcase-rbac_EKS.yaml"
 HELM_CHART_SANITY_PLUGINS_DIFF_VALUE_FILE_NAME="diff-values_showcase-sanity-plugins.yaml"
 HELM_CHART_SANITY_PLUGINS_MERGED_VALUE_FILE_NAME="merged-values_showcase-sanity-plugins.yaml"
+HELM_CHART_LOCALIZATION_FR_DIFF_VALUE_FILE_NAME="diff-values_showcase-localization-fr.yaml"
+HELM_CHART_LOCALIZATION_FR_MERGED_VALUE_FILE_NAME="merged-values_showcase-localization-fr.yaml"
 
 HELM_CHART_URL="oci://quay.io/rhdh/chart"
 K8S_CLUSTER_TOKEN_ENCODED=$(printf "%s" $K8S_CLUSTER_TOKEN | base64 | tr -d '\n')
@@ -56,6 +58,7 @@ NAME_SPACE_RBAC="${NAME_SPACE_RBAC:-showcase-rbac}"
 NAME_SPACE_RUNTIME="${NAME_SPACE_RUNTIME:-showcase-runtime}"
 NAME_SPACE_POSTGRES_DB="${NAME_SPACE_POSTGRES_DB:-postgress-external-db}"
 NAME_SPACE_SANITY_PLUGINS_CHECK="showcase-sanity-plugins"
+NAME_SPACE_LOCALIZATION_FR="showcase-localization-fr"
 OPERATOR_MANAGER='rhdh-operator'
 CHART_MAJOR_VERSION="1.9"
 GITHUB_APP_APP_ID=$(cat /tmp/secrets/GITHUB_APP_3_APP_ID)

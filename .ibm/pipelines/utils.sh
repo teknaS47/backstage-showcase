@@ -915,6 +915,27 @@ initiate_sanity_plugin_checks_deployment() {
     --set orchestrator.enabled=true
 }
 
+initiate_localization_fr_deployment() {
+  local release_name=$1
+  local name_space_localization_fr=$2
+  local localization_fr_url=$3
+
+  configure_namespace "${name_space_localization_fr}"
+  uninstall_helmchart "${name_space_localization_fr}" "${release_name}"
+  deploy_redis_cache "${name_space_localization_fr}"
+  apply_yaml_files "${DIR}" "${name_space_localization_fr}" "${localization_fr_url}"
+  yq_merge_value_files "overwrite" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_LOCALIZATION_FR_DIFF_VALUE_FILE_NAME}" "/tmp/${HELM_CHART_LOCALIZATION_FR_MERGED_VALUE_FILE_NAME}"
+  mkdir -p "${ARTIFACT_DIR}/${name_space_localization_fr}"
+  cp -a "/tmp/${HELM_CHART_LOCALIZATION_FR_MERGED_VALUE_FILE_NAME}" "${ARTIFACT_DIR}/${name_space_localization_fr}/" || true # Save the final value-file into the artifacts directory.
+  # shellcheck disable=SC2046
+  helm upgrade -i "${release_name}" -n "${name_space_localization_fr}" \
+    "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
+    -f "/tmp/${HELM_CHART_LOCALIZATION_FR_MERGED_VALUE_FILE_NAME}" \
+    --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
+    $(get_image_helm_set_params) \
+    --set orchestrator.enabled=true
+}
+
 check_and_test() {
   local release_name=$1
   local namespace=$2
