@@ -27,7 +27,7 @@ test.describe("Admin > Extensions", () => {
   const supportTypeOptions = [
     t["plugin.marketplace"][lang]["badges.generallyAvailable"],
     t["plugin.marketplace"][lang]["badges.certified"],
-    t["plugin.marketplace"][lang]["badges.customPlugin"],
+    // t["plugin.marketplace"][lang]["badges.customPlugin"],
     t["plugin.marketplace"][lang]["badges.techPreview"],
     t["plugin.marketplace"][lang]["badges.devPreview"],
     t["plugin.marketplace"][lang]["badges.communityPlugin"],
