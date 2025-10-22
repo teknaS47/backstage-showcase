@@ -203,13 +203,15 @@ export class Common {
 
   async clickOnGHloginPopup() {
     const isLoginRequiredVisible = await this.uiHelper.isTextVisible(
-      t["core-components"][lang]["signIn.title"],
+      t["user-settings"][lang]["providerSettingsItem.buttonTitle.signIn"],
     );
     if (isLoginRequiredVisible) {
       await this.uiHelper.clickButton(
-        t["core-components"][lang]["signIn.title"],
+        t["user-settings"][lang]["providerSettingsItem.buttonTitle.signIn"],
       );
-      await this.uiHelper.clickButton("Log in");
+      await this.uiHelper.clickButton(
+        t["core-components"][lang]["oauthRequestDialog.login"],
+      );
       await this.checkAndReauthorizeGithubApp();
       await this.uiHelper.waitForLoginBtnDisappear();
     } else {
@@ -362,7 +364,9 @@ export class Common {
           ),
         )
         .click(),
-      this.uiHelper.clickButton("Log in"),
+      this.uiHelper.clickButton(
+        t["core-components"][lang]["oauthRequestDialog.login"],
+      ),
     ]);
 
     return this.handleGitHubPopupLogin(popup, username, password, twofactor);
