@@ -355,7 +355,12 @@ export class Common {
     const [popup] = await Promise.all([
       this.page.waitForEvent("popup"),
       this.page
-        .getByTitle(t["rhdh"][lang]["signIn.providers.github.title"])
+        .getByTitle(
+          t["user-settings"][lang]["providerSettingsItem.title.signIn"].replace(
+            "{{title}}",
+            "GitHub",
+          ),
+        )
         .click(),
       this.uiHelper.clickButton("Log in"),
     ]);
