@@ -27,6 +27,7 @@ test.describe("Admin > Extensions", () => {
   const supportTypeOptions = [
     t["plugin.marketplace"][lang]["badges.generallyAvailable"],
     t["plugin.marketplace"][lang]["badges.certified"],
+    // TODO: Custom plugin is not on the list: https://issues.redhat.com/browse/RHDHBUGS-2153
     // t["plugin.marketplace"][lang]["badges.customPlugin"],
     t["plugin.marketplace"][lang]["badges.techPreview"],
     t["plugin.marketplace"][lang]["badges.devPreview"],
@@ -129,6 +130,8 @@ test.describe("Admin > Extensions", () => {
     });
 
     test("Verify support type filters in extensions", async ({ page }) => {
+      // TODO: https://issues.redhat.com/browse/RHDHBUGS-2146
+      test.fixme();
       await extensions.selectDropdown(
         t["plugin.marketplace"][lang]["search.supportType"],
       );
