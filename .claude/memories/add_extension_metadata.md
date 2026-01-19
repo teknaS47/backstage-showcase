@@ -92,7 +92,7 @@ Create `catalog-entities/extensions/plugins/{plugin-name}.yaml`:
 ### Step 4: Validate Files
 
 ```bash
-# Navigate to marketplace directory
+# Navigate to extensions directory
 cd catalog-entities/extensions
 
 # Download schemas to temp directory (ajv doesn't support remote schemas well)
