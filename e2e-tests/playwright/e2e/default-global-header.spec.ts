@@ -118,7 +118,9 @@ test.describe("Default Global Header", () => {
   test("Verify Profile Dropdown behaves as expected", async ({ page }) => {
     await uiHelper.openProfileDropdown();
     await uiHelper.verifyLinkVisible(
-      t["user-settings"][lang]["settingsLayout.title"],
+      // TODO: RHDHBUGS-2552 - Strings not getting translated
+      // t["plugin.global-header"][lang]["profile.settings"],
+      "Settings",
     );
     await uiHelper.verifyTextVisible(
       t["plugin.global-header"][lang]["profile.signOut"],

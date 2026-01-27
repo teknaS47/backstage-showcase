@@ -22,7 +22,9 @@ export class ThemeVerifier {
       "/settings",
       t["user-settings"][lang]["settingsLayout.title"],
     );
-    await this.uiHelper.clickBtnByTitleIfNotPressed(`Select ${theme}`);
+    await this.uiHelper.clickBtnByTitleIfNotPressed(
+      `${t["user-settings"][lang]["themeToggle.select"]}  ${theme}`,
+    );
     const themeButton = this.page.getByRole("button", {
       name: theme,
       exact: true,
