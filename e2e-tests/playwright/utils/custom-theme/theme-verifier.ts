@@ -23,7 +23,7 @@ export class ThemeVerifier {
       t["user-settings"][lang]["settingsLayout.title"],
     );
     await this.uiHelper.clickBtnByTitleIfNotPressed(
-      `${t["user-settings"][lang]["themeToggle.select"]}  ${theme}`,
+      `${t["user-settings"][lang]["themeToggle.select"].replace("{{theme}}", theme)}`,
     );
     const themeButton = this.page.getByRole("button", {
       name: theme,
