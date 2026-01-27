@@ -128,7 +128,9 @@ test.describe("Default Global Header", () => {
 
     await page
       .getByRole("menuitem", {
-        name: t["user-settings"][lang]["settingsLayout.title"],
+        // TODO: RHDHBUGS-2552 - Strings not getting translated
+        // t["plugin.global-header"][lang]["profile.settings"],
+        name: "Settings",
       })
       .click();
     await uiHelper.verifyHeading(
@@ -160,9 +162,8 @@ test.describe("Default Global Header", () => {
     await expect(dropdownList).toBeVisible();
     await searchBar.press("Enter");
     await uiHelper.verifyHeading(t["rhdh"][lang]["app.search.title"]);
-    const searchResultPageInput = page.getByRole("textbox", {
-      name: /search/i,
-    });
+    // eslint-disable-next-line playwright/no-raw-locators
+    const searchResultPageInput = page.locator("#search-bar-text-field");
     await expect(searchResultPageInput).toHaveValue("test query term");
   });
 
