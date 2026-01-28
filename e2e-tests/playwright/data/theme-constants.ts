@@ -24,14 +24,6 @@ export class ThemeConstants {
       navigationIndicatorColor: "rgb(45, 113, 190)",
     };
 
-    const darkDynamic: ThemeInfo = {
-      name: "Dark Dynamic",
-      primaryColor: "#ab75cf",
-      headerColor1: "rgb(0, 0, 208)",
-      headerColor2: "rgb(255, 246, 140)",
-      navigationIndicatorColor: "rgb(244, 238, 169)",
-    };
-
     const lightDynamic: ThemeInfo = {
       name: "Light Dynamic",
       primaryColor: "rgb(255, 95, 21)",
@@ -40,6 +32,14 @@ export class ThemeConstants {
       navigationIndicatorColor: "rgb(255, 95, 21)",
     };
 
-    return [light, dark, lightDynamic, darkDynamic];
+    const darkDynamic: ThemeInfo = {
+      name: "Dark Dynamic",
+      primaryColor: "#ab75cf",
+      headerColor1: "rgb(0, 0, 208)",
+      headerColor2: "rgb(255, 246, 140)",
+      navigationIndicatorColor: "rgb(244, 238, 169)",
+    };
+
+    return [light, dark, darkDynamic, lightDynamic];
   }
 }
