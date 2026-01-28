@@ -140,7 +140,11 @@ test.describe("Default Global Header", () => {
     await uiHelper.goToMyProfilePage();
     await uiHelper.verifyTextInSelector("header > div > p", "user");
     await uiHelper.verifyHeading(process.env.GH_USER2_ID);
-    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(
+      page.getByRole("tab", {
+        name: t["rhdh"][lang]["catalog.entityPage.overview.title"],
+      }),
+    ).toBeVisible();
 
     await uiHelper.openProfileDropdown();
     // Scope sign-out search to the profile menu (role=menu)

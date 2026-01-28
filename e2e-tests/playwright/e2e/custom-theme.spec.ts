@@ -13,8 +13,6 @@ import { ThemeConstants } from "../data/theme-constants";
 //   getCurrentLanguage,
 // } from "../e2e/localization/locale";
 
-import { UIhelper } from "../utils/ui-helper";
-
 // TODO: RHDHBUGS-2552 - Strings not getting translated
 // const t = getTranslations();
 // const lang = getCurrentLanguage();
