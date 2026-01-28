@@ -22,6 +22,7 @@ export class ThemeVerifier {
       "/settings",
       t["user-settings"][lang]["settingsLayout.title"],
     );
+    await this.uiHelper.hideQuickstartIfVisible();
     await this.uiHelper.clickBtnByTitleIfNotPressed(
       `${t["user-settings"][lang]["themeToggle.select"].replace("{{theme}}", theme)}`,
     );
