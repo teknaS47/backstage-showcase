@@ -4,6 +4,10 @@ import { PW_PROJECT } from "./playwright/projects";
 process.env.JOB_NAME = process.env.JOB_NAME || "";
 process.env.IS_OPENSHIFT = process.env.IS_OPENSHIFT || "";
 
+const isPrOcpHelmJob =
+  process.env.JOB_NAME.includes("pull") &&
+  process.env.JOB_NAME.includes("e2e-ocp-helm");
+
 // Set LOCALE based on which project is being run
 const args = process.argv;
 
@@ -80,6 +84,9 @@ export default defineConfig({
         "**/playwright/e2e/plugins/tekton/tekton.spec.ts",
         "**/playwright/e2e/dynamic-home-page-customization.spec.ts",
         "**/playwright/e2e/plugins/scorecard/scorecard.spec.ts",
+        ...(isPrOcpHelmJob
+          ? ["**/playwright/e2e/plugins/orchestrator/**/*.spec.ts"]
+          : []),
       ],
     },
     {
@@ -198,7 +205,7 @@ export default defineConfig({
     },
     {
       name: PW_PROJECT.ANY_TEST,
-      testMatch: "**/*.spec.ts", // Allows running any test file
+      testMatch: "**/*.spec.ts",
     },
     {
       name: PW_PROJECT.SHOWCASE_UPGRADE,
