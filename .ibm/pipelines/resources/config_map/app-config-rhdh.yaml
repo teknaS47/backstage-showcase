@@ -247,5 +247,7 @@ i18n:
   locales:
     - en
     - fr
+    - it
+    - ja
     - de
   defaultLocale: en

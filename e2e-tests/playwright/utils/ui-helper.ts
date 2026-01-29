@@ -1,6 +1,5 @@
 import { expect, Locator, Page } from "@playwright/test";
 import { UI_HELPER_ELEMENTS } from "../support/page-objects/global-obj";
-import { SidebarTabs } from "./navbar";
 import { SEARCH_OBJECTS_COMPONENTS } from "../support/page-objects/page-obj";
 import {
   getTranslations,
@@ -337,7 +336,7 @@ export class UIhelper {
     await this.page.waitForSelector("nav a", { timeout: 10_000 });
   }
 
-  async openSidebar(navBarText: SidebarTabs) {
+  async openSidebar(navBarText: string) {
     const navLink = this.page
       .locator(`nav a:has-text("${navBarText}")`)
       .first();
@@ -346,7 +345,7 @@ export class UIhelper {
   }
 
   async openCatalogSidebar(kind: string) {
-    await this.openSidebar("Catalog");
+    await this.openSidebar(t["rhdh"][lang]["menuItem.catalog"]);
     await this.selectMuiBox("Kind", kind);
     await expect(async () => {
       await this.clickByDataTestId("user-picker-all");
@@ -413,7 +412,7 @@ export class UIhelper {
       ? this.page.locator(locator).getByText(text, { exact }).first()
       : this.page.getByText(text, { exact }).first();
 
-    await elementLocator.waitFor({ state: "visible" });
+    await elementLocator.waitFor({ state: "visible", timeout: 5000 });
     await elementLocator.waitFor({ state: "attached" });
 
     try {
@@ -845,5 +844,16 @@ export class UIhelper {
     if (await quickstartHideButton.isVisible()) {
       await quickstartHideButton.click();
     }
+  }
+
+  async openQuickstartIfHidden(): Promise<void> {
+    const quickstartHideButton = this.page.getByRole("button", {
+      name: t["plugin.quickstart"][lang]["footer.hide"],
+    });
+    if (!(await quickstartHideButton.isVisible())) {
+      await this.clickButtonByLabel("Help");
+      await this.clickByDataTestId("quickstart-button");
+    }
+    await expect(quickstartHideButton).toBeVisible();
   }
 }

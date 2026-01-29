@@ -97,6 +97,8 @@ test.beforeAll(async ({ }, testInfo) => {
    - `showcase-sanity-plugins`: Plugin sanity checks
    - `showcase-upgrade`: Upgrade scenario tests
    - `showcase-localization-fr`: French localization tests
+   - `showcase-localization-it`: Italian localization tests
+   - `showcase-localization-ja`: Japanese localization tests
    - `any-test`: Use for debugging when you need to run a specific tests
 
    **Note**: All project names are defined in `e2e-tests/playwright/projects.json` as the single source of truth. This file is consumed by:
@@ -130,9 +132,9 @@ test.beforeAll(async ({ }, testInfo) => {
 
 7. **Localization Tests** (`playwright/e2e/localization/`)
    - Verify UI displays correctly translated strings
-   - Currently supports **French (fr)** only
+   - Supports **French (fr)**, **Italian (it)**, and **Japanese (ja)**
    - Runs as part of OCP nightly job (skipped for OSD-GCP)
-   - Uses `showcase-localization-fr` Playwright project
+   - Uses `showcase-localization-fr`, `showcase-localization-it`, `showcase-localization-ja` Playwright projects
    - Translation files located in `translations/` directory
    - Test helper: `e2e-tests/playwright/e2e/localization/locale.ts`
 
@@ -183,6 +185,8 @@ yarn showcase-sanity-plugins       # Plugin sanity tests
 
 # Localization tests
 yarn showcase-localization-fr      # French localization tests
+yarn showcase-localization-it      # Italian localization tests
+yarn showcase-localization-ja      # Japanese localization tests
 
 # Utility scripts
 yarn lint:check                    # Lint checking
@@ -526,6 +530,8 @@ The choice of config map depends on the **Playwright test project** being execut
 - `showcase-sanity-plugins` - Plugin sanity tests
 - `showcase-upgrade` - Upgrade scenario tests
 - `showcase-localization-fr` - French localization tests
+- `showcase-localization-it` - Italian localization tests
+- `showcase-localization-ja` - Japanese localization tests
 - `showcase-auth-providers` - Authentication provider tests (uses special deployment process)
 
 #### **app-config-rhdh-rbac.yaml** (RBAC Configuration)

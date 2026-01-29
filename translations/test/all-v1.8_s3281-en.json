@@ -971,7 +971,7 @@
       "templateListPage.pageTitle": "Create a new component",
       "templateListPage.templateGroups.defaultTitle": "Templates",
       "templateListPage.templateGroups.otherTitle": "Other Templates",
-      "templateListPage.contentHeader.registerExistingButtonTitle": "Register Existing Component",
+      "templateListPage.contentHeader.registerExistingButtonTitle": "Import an existing Git repository",
       "templateListPage.contentHeader.supportButtonTitle": "Create new software components using standard templates. Different templates create different kinds of components (services, websites, documentation, ...).",
       "templateListPage.additionalLinksForEntity.viewTechDocsTitle": "View TechDocs",
       "templateWizardPage.title": "Create a new component",
