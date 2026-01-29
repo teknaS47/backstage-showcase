@@ -9,7 +9,7 @@ retrieve_pod_logs() {
   local pod_name=$1
   local container=$2
   local namespace=$3
-  local log_timeout=${4:-30} # Default timeout: 30 seconds
+  local log_timeout=${4:-5} # Default timeout: 5 seconds (reduced from 30s to speed up failure cases)
   log::debug "Retrieving logs for container: $container"
   # Save logs for the current and previous container with timeout to prevent hanging
   timeout "${log_timeout}" kubectl logs "$pod_name" -c "$container" -n "$namespace" > "pod_logs/${pod_name}_${container}.log" 2> /dev/null || { log::warn "logs for container $container not found or timed out"; }
@@ -680,9 +680,13 @@ deploy_test_backstage_customization_provider() {
 
   # Check if the buildconfig already exists
   if ! oc get buildconfig test-backstage-customization-provider -n "${project}" > /dev/null 2>&1; then
-    log::info "Creating new app for test-backstage-customization-provider"
-    oc new-app -S openshift/nodejs:18-minimal-ubi8
-    oc new-app https://github.com/janus-qe/test-backstage-customization-provider --image-stream="openshift/nodejs:18-ubi8" --namespace="${project}"
+    # Get latest nodejs UBI9 tag from cluster, fallback to 18-ubi8
+    local nodejs_tag
+    nodejs_tag=$(oc get imagestream nodejs -n openshift -o jsonpath='{.spec.tags[*].name}' 2> /dev/null \
+      | tr ' ' '\n' | grep -E '^[0-9]+-ubi9$' | sort -t'-' -k1 -n | tail -1)
+    nodejs_tag="${nodejs_tag:-18-ubi8}"
+    log::info "Creating new app for test-backstage-customization-provider using nodejs:${nodejs_tag}"
+    oc new-app "openshift/nodejs:${nodejs_tag}~https://github.com/janus-qe/test-backstage-customization-provider" --namespace="${project}"
   else
     log::warn "BuildConfig for test-backstage-customization-provider already exists in ${project}. Skipping new-app creation."
   fi
@@ -841,6 +845,33 @@ check_backstage_running() {
     else
       log::warn "Attempt ${i} of ${max_attempts}: Backstage not yet available (HTTP Status: ${http_status})"
       oc get pods -n "${namespace}"
+
+      # Early crash detection: fail fast if RHDH pods are in CrashLoopBackOff
+      # Check both the main deployment and postgresql pods
+      local crash_pods
+      crash_pods=$(oc get pods -n "${namespace}" -l "app.kubernetes.io/instance in (${release_name},redhat-developer-hub,developer-hub,${release_name}-postgresql)" \
+        -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.phase}{" "}{range .status.containerStatuses[*]}{.state.waiting.reason}{end}{range .status.initContainerStatuses[*]}{.state.waiting.reason}{end}{"\n"}{end}' 2> /dev/null | grep -E "CrashLoopBackOff" || true)
+      # Also check by name pattern for postgresql pods that may have different labels
+      if [ -z "${crash_pods}" ]; then
+        crash_pods=$(oc get pods -n "${namespace}" --no-headers 2> /dev/null | grep -E "(${release_name}|developer-hub|postgresql)" | grep -E "CrashLoopBackOff|Init:CrashLoopBackOff" || true)
+      fi
+
+      if [ -n "${crash_pods}" ]; then
+        log::error "Detected pods in CrashLoopBackOff state - failing fast instead of waiting:"
+        echo "${crash_pods}"
+        log::error "Deployment status:"
+        oc get deployment -l "app.kubernetes.io/instance in (${release_name},redhat-developer-hub,developer-hub)" -n "${namespace}" -o wide 2> /dev/null || true
+        log::error "Recent logs from deployment:"
+        oc logs deployment/${release_name}-developer-hub -n "${namespace}" --tail=100 --all-containers=true 2> /dev/null \
+          || oc logs deployment/${release_name} -n "${namespace}" --tail=100 --all-containers=true 2> /dev/null || true
+        log::error "Recent events:"
+        oc get events -n "${namespace}" --sort-by='.lastTimestamp' | tail -20
+        mkdir -p "${ARTIFACT_DIR}/${namespace}"
+        cp -a "/tmp/${LOGFILE}" "${ARTIFACT_DIR}/${namespace}/" || true
+        save_all_pod_logs "${namespace}"
+        return 1
+      fi
+
       sleep "${wait_seconds}"
     fi
   done
@@ -1320,7 +1351,11 @@ check_and_test() {
   if check_backstage_running "${release_name}" "${namespace}" "${url}" "${max_attempts}" "${wait_seconds}"; then
     echo "Display pods for verification..."
     oc get pods -n "${namespace}"
-    run_tests "${release_name}" "${namespace}" "${playwright_project}" "${url}"
+    if [[ "${SKIP_TESTS:-false}" == "true" ]]; then
+      log::info "SKIP_TESTS=true, skipping test execution for namespace: ${namespace}"
+    else
+      run_tests "${release_name}" "${namespace}" "${playwright_project}" "${url}"
+    fi
   else
     echo "Backstage is not running. Marking deployment as failed and continuing..."
     CURRENT_DEPLOYMENT=$((CURRENT_DEPLOYMENT + 1))
