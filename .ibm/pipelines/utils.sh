@@ -16,6 +16,8 @@ source "${DIR}/lib/orchestrator.sh"
 source "${DIR}/lib/helm.sh"
 # shellcheck source=.ibm/pipelines/lib/namespace.sh
 source "${DIR}/lib/namespace.sh"
+# shellcheck source=.ibm/pipelines/lib/config.sh
+source "${DIR}/lib/config.sh"
 
 # Constants
 TEKTON_PIPELINES_WEBHOOK="tekton-pipelines-webhook"
@@ -176,9 +178,9 @@ configure_external_postgres_db() {
 
   # Now we can safely get the password
   POSTGRES_PASSWORD=$(oc get secret/postgress-external-db-pguser-janus-idp -n "${NAME_SPACE_POSTGRES_DB}" -o jsonpath='{.data.password}')
-  sed_inplace "s|POSTGRES_PASSWORD:.*|POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
+  common::sed_inplace "s|POSTGRES_PASSWORD:.*|POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
   POSTGRES_HOST=$(common::base64_encode "postgress-external-db-primary.$NAME_SPACE_POSTGRES_DB.svc.cluster.local")
-  sed_inplace "s|POSTGRES_HOST:.*|POSTGRES_HOST: ${POSTGRES_HOST}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
+  common::sed_inplace "s|POSTGRES_HOST:.*|POSTGRES_HOST: ${POSTGRES_HOST}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
 
   # Validate final configuration apply
   if ! oc apply -f "${DIR}/resources/postgres-db/postgres-cred.yaml" --namespace="${project}"; then
@@ -204,7 +206,7 @@ apply_yaml_files() {
   )
 
   for file in "${files[@]}"; do
-    sed_inplace "s/namespace:.*/namespace: ${project}/g" "$file"
+    common::sed_inplace "s/namespace:.*/namespace: ${project}/g" "$file"
   done
 
   DH_TARGET_URL=$(common::base64_encode "test-backstage-customization-provider-${project}.${K8S_CLUSTER_ROUTER_BASE}")
@@ -221,9 +223,9 @@ apply_yaml_files() {
   envsubst < "${DIR}/auth/secrets-rhdh-secrets.yaml" | oc apply --namespace="${project}" -f -
 
   # Select the configuration file based on the namespace or job
-  config_file=$(select_config_map_file)
+  config_file=$(config::select_config_map_file "$project" "$dir")
   # Apply the ConfigMap with the correct file
-  create_app_config_map "$config_file" "$project"
+  config::create_app_config_map "$config_file" "$project"
 
   common::create_configmap_from_file "dynamic-plugins-config" "$project" \
     "dynamic-plugins-config.yaml" "$dir/resources/config_map/dynamic-plugins-config.yaml"
@@ -289,53 +291,6 @@ deploy_redis_cache() {
   local namespace=$1
   envsubst < "$DIR/resources/redis-cache/redis-secret.yaml" | oc apply --namespace="${namespace}" -f -
   oc apply -f "$DIR/resources/redis-cache/redis-deployment.yaml" --namespace="${namespace}"
-}
-
-# ==============================================================================
-# FUTURE MODULE: lib/config.sh
-# Functions: create_app_config_map, select_config_map_file, create_dynamic_plugins_config,
-#            create_conditional_policies_operator, prepare_operator_app_config
-# ==============================================================================
-
-create_app_config_map() {
-  local config_file=$1
-  local project=$2
-
-  oc create configmap app-config-rhdh \
-    --from-file="app-config-rhdh.yaml"="$config_file" \
-    --namespace="$project" \
-    --dry-run=client -o yaml | oc apply -f -
-}
-
-select_config_map_file() {
-  if [[ "${project}" == *rbac* ]]; then
-    echo "$dir/resources/config_map/app-config-rhdh-rbac.yaml"
-  else
-    echo "$dir/resources/config_map/app-config-rhdh.yaml"
-  fi
-}
-
-create_dynamic_plugins_config() {
-  local base_file=$1
-  local final_file=$2
-  echo "kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: dynamic-plugins
-data:
-  dynamic-plugins.yaml: |" > ${final_file}
-  yq '.global.dynamic' ${base_file} | sed -e 's/^/    /' >> ${final_file}
-}
-
-create_conditional_policies_operator() {
-  local destination_file=$1
-  yq '.upstream.backstage.initContainers[0].command[2]' "${DIR}/value_files/values_showcase-rbac.yaml" | head -n -4 | tail -n +2 > $destination_file
-  sed_inplace 's/\\\$/\$/g' "$destination_file"
-}
-
-prepare_operator_app_config() {
-  local config_file=$1
-  yq e -i '.permission.rbac.conditionalPoliciesFile = "./rbac/conditional-policies.yaml"' ${config_file}
 }
 
 # ==============================================================================
@@ -506,8 +461,8 @@ install_pipelines_operator() {
 }
 
 waitfor_pipelines_operator() {
-  wait_for_deployment "openshift-operators" "pipelines"
-  wait_for_endpoint "tekton-pipelines-webhook" "openshift-pipelines"
+  k8s_wait::deployment "openshift-operators" "pipelines"
+  k8s_wait::endpoint "tekton-pipelines-webhook" "openshift-pipelines"
 }
 
 # Installs the Tekton Pipelines if not already installed (alternative of OpenShift Pipelines for Kubernetes clusters)
@@ -524,8 +479,8 @@ install_tekton_pipelines() {
 
 waitfor_tekton_pipelines() {
   local display_name="tekton-pipelines-webhook"
-  wait_for_deployment "tekton-pipelines" "${display_name}"
-  wait_for_endpoint "tekton-pipelines-webhook" "tekton-pipelines"
+  k8s_wait::deployment "tekton-pipelines" "${display_name}"
+  k8s_wait::endpoint "tekton-pipelines-webhook" "tekton-pipelines"
   k8s_wait::crd "pipelines.tekton.dev" 120 5 || return 1
 }
 
@@ -707,7 +662,7 @@ rbac_deployment() {
     log::warn "Skipping sonataflow (orchestrator) external DB SSL workaround on PR job: ${JOB_NAME}"
   else
     # Wait for the sonataflow database creation job to complete with robust error handling
-    if ! wait_for_job_completion "${NAME_SPACE_RBAC}" "${RELEASE_NAME_RBAC}-create-sonataflow-database" 10 10; then
+    if ! k8s_wait::job "${NAME_SPACE_RBAC}" "${RELEASE_NAME_RBAC}-create-sonataflow-database" 10 10; then
       echo "❌ Failed to create sonataflow database. Aborting RBAC deployment."
       return 1
     fi
@@ -958,8 +913,6 @@ check_helm_upgrade() {
 is_openshift() {
   oc get routes.route.openshift.io &> /dev/null || kubectl get routes.route.openshift.io &> /dev/null
 }
-
-sed_inplace() { common::sed_inplace "$@"; }
 
 # Helper function to wait for backstage resource to exist in namespace
 wait_for_backstage_resource() {
