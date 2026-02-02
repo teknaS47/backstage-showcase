@@ -1,3 +1,5 @@
+import frBackstage from "../../../../translations/backstage-fr.json" with { type: "json" };
+import frCommunityPluginsBase from "../../../../translations/community-plugins-fr.json" with { type: "json" };
 import frRhdh from "../../../../translations/test/rhdh-fr.json" with { type: "json" };
 import frCommunityPlugins from "../../../../translations/test/community-plugins-fr.json" with { type: "json" };
 import frRhdhPlugins from "../../../../translations/test/rhdh-plugins-fr.json" with { type: "json" };
@@ -6,6 +8,8 @@ import frMissingTranslations from "../../../../translations/test/missing-fr-tran
 import en from "../../../../translations/test/all-v1.8_s3281-en.json" with { type: "json" };
 
 const fr = {
+  ...frBackstage,
+  ...frCommunityPluginsBase,
   ...frRhdh,
   ...frCommunityPlugins,
   ...frRhdhPlugins,

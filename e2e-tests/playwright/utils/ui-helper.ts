@@ -346,8 +346,11 @@ export class UIhelper {
   }
 
   async openCatalogSidebar(kind: string) {
-    await this.openSidebar("Catalog");
-    await this.selectMuiBox("Kind", kind);
+    await this.openSidebar(t["rhdh"][lang]["menuItem.catalog"]);
+    await this.selectMuiBox(
+      `${t["catalog-react"][lang]["entityKindPicker.title"]}`,
+      kind,
+    );
     await expect(async () => {
       await this.clickByDataTestId("user-picker-all");
       await this.page.waitForTimeout(1_500);
@@ -418,7 +421,7 @@ export class UIhelper {
       ? this.page.locator(locator).getByText(text, { exact }).first()
       : this.page.getByText(text, { exact }).first();
 
-    await elementLocator.waitFor({ state: "visible" });
+    await elementLocator.waitFor({ state: "visible", timeout: 5000 });
     await elementLocator.waitFor({ state: "attached" });
 
     try {
