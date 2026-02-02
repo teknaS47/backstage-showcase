@@ -12,6 +12,12 @@ source "${DIR}/lib/operators.sh"
 source "${DIR}/lib/k8s-wait.sh"
 # shellcheck source=.ibm/pipelines/lib/orchestrator.sh
 source "${DIR}/lib/orchestrator.sh"
+# shellcheck source=.ibm/pipelines/lib/helm.sh
+source "${DIR}/lib/helm.sh"
+# shellcheck source=.ibm/pipelines/lib/namespace.sh
+source "${DIR}/lib/namespace.sh"
+# shellcheck source=.ibm/pipelines/lib/config.sh
+source "${DIR}/lib/config.sh"
 
 # Constants
 TEKTON_PIPELINES_WEBHOOK="tekton-pipelines-webhook"
@@ -58,48 +64,6 @@ save_all_pod_logs() {
 }
 
 # ==============================================================================
-# FUTURE MODULE: lib/helm.sh
-# Functions: yq_merge_value_files, uninstall_helmchart, get_image_helm_set_params,
-#            perform_helm_install, get_chart_version, get_previous_release_value_file
-# ==============================================================================
-
-# Merge the base YAML value file with the differences file for Kubernetes
-yq_merge_value_files() {
-  local plugin_operation=$1 # Chose whether you want to merge or overwrite the plugins key (the second file will overwrite the first)
-  local base_file=$2
-  local diff_file=$3
-  local step_1_file="/tmp/step-without-plugins.yaml"
-  local step_2_file="/tmp/step-only-plugins.yaml"
-  local final_file=$4
-  if [ "$plugin_operation" = "merge" ]; then
-    # Step 1: Merge files, excluding the .global.dynamic.plugins key
-    # Values from `diff_file` override those in `base_file`
-    yq eval-all '
-      select(fileIndex == 0) * select(fileIndex == 1) |
-      del(.global.dynamic.plugins)
-    ' "${base_file}" "${diff_file}" > "${step_1_file}"
-    # Step 2: Merge files, combining the .global.dynamic.plugins key
-    # Values from `diff_file` take precedence; plugins are merged and deduplicated by the .package field
-    yq eval-all '
-      select(fileIndex == 0) *+ select(fileIndex == 1) |
-      .global.dynamic.plugins |= (reverse | unique_by(.package) | reverse)
-    ' "${base_file}" "${diff_file}" > "${step_2_file}"
-    # Step 3: Combine results from the previous steps and remove null values
-    # Values from `step_2_file` override those in `step_1_file`
-    yq eval-all '
-      select(fileIndex == 0) * select(fileIndex == 1) | del(.. | select(. == null))
-    ' "${step_2_file}" "${step_1_file}" > "${final_file}"
-  elif [ "$plugin_operation" = "overwrite" ]; then
-    yq eval-all '
-    select(fileIndex == 0) * select(fileIndex == 1)
-  ' "${base_file}" "${diff_file}" > "${final_file}"
-  else
-    log::error "Invalid operation with plugins key: $plugin_operation"
-    exit 1
-  fi
-}
-
-# ==============================================================================
 # Orchestrator Functions - Delegate to lib/orchestrator.sh
 # ==============================================================================
 should_skip_orchestrator() { orchestrator::should_skip; }
@@ -110,57 +74,9 @@ disable_orchestrator_plugins_in_values() {
 }
 
 # ==============================================================================
-# K8s Wait Functions - Delegate to lib/k8s-wait.sh
-# ==============================================================================
-wait_for_deployment() { k8s_wait::deployment "$@"; }
-
-wait_for_job_completion() { k8s_wait::job "$@"; }
-
-wait_for_svc() { k8s_wait::service "$@"; }
-
-wait_for_endpoint() { k8s_wait::endpoint "$@"; }
-
-# ==============================================================================
 # Operator Functions - Delegate to lib/operators.sh
 # ==============================================================================
 install_subscription() { operator::install_subscription "$@"; }
-
-# ==============================================================================
-# FUTURE MODULE: lib/namespace.sh
-# Functions: configure_namespace, delete_namespace, force_delete_namespace,
-#            remove_finalizers_from_resources, setup_image_pull_secret,
-#            create_secret_dockerconfigjson, add_image_pull_secret_to_namespace_default_serviceaccount
-# ==============================================================================
-
-create_secret_dockerconfigjson() {
-  namespace=$1
-  secret_name=$2
-  dockerconfigjson_value=$3
-  log::info "Creating dockerconfigjson secret $secret_name in namespace $namespace"
-  kubectl apply -n "$namespace" -f - << EOD
-apiVersion: v1
-kind: Secret
-metadata:
-  name: $secret_name
-data:
-  .dockerconfigjson: $dockerconfigjson_value
-type: kubernetes.io/dockerconfigjson
-EOD
-}
-add_image_pull_secret_to_namespace_default_serviceaccount() {
-  namespace=$1
-  secret_name=$2
-  log::info "Adding image pull secret $secret_name to default service account"
-  kubectl -n "${namespace}" patch serviceaccount default -p "{\"imagePullSecrets\": [{\"name\": \"${secret_name}\"}]}"
-}
-setup_image_pull_secret() {
-  local namespace=$1
-  local secret_name=$2
-  local dockerconfigjson_value=$3
-  log::info "Creating $secret_name secret in $namespace namespace"
-  create_secret_dockerconfigjson "$namespace" "$secret_name" "$dockerconfigjson_value"
-  add_image_pull_secret_to_namespace_default_serviceaccount "$namespace" "$secret_name"
-}
 
 check_operator_status() { operator::check_status "$@"; }
 
@@ -206,51 +122,6 @@ install_serverless_ocp_operator() {
 
 waitfor_serverless_ocp_operator() {
   check_operator_status 300 "openshift-operators" "Red Hat OpenShift Serverless" "Succeeded"
-}
-
-uninstall_helmchart() {
-  local project=$1
-  local release=$2
-  if helm list -n "${project}" | grep -q "${release}"; then
-    log::warn "Chart already exists. Removing it before install."
-    helm uninstall "${release}" -n "${project}"
-  fi
-}
-
-configure_namespace() {
-  local project=$1
-  log::warn "Deleting and recreating namespace: $project"
-  delete_namespace $project
-
-  if ! oc create namespace "${project}"; then
-    log::error "Error: Failed to create namespace ${project}" >&2
-    exit 1
-  fi
-  if ! oc config set-context --current --namespace="${project}"; then
-    log::error "Error: Failed to set context for namespace ${project}" >&2
-    exit 1
-  fi
-
-  echo "Namespace ${project} is ready."
-}
-
-delete_namespace() {
-  local project=$1
-  if oc get namespace "$project" > /dev/null 2>&1; then
-    log::warn "Namespace ${project} exists. Attempting to delete..."
-
-    # Remove blocking finalizers
-    # remove_finalizers_from_resources "$project"
-
-    # Attempt to delete the namespace
-    oc delete namespace "$project" --grace-period=0 --force || true
-
-    # Check if namespace is still stuck in 'Terminating' and force removal if necessary
-    if oc get namespace "$project" -o jsonpath='{.status.phase}' | grep -q 'Terminating'; then
-      log::warn "Namespace ${project} is stuck in Terminating. Forcing deletion..."
-      force_delete_namespace "$project"
-    fi
-  fi
 }
 
 configure_external_postgres_db() {
@@ -307,9 +178,9 @@ configure_external_postgres_db() {
 
   # Now we can safely get the password
   POSTGRES_PASSWORD=$(oc get secret/postgress-external-db-pguser-janus-idp -n "${NAME_SPACE_POSTGRES_DB}" -o jsonpath='{.data.password}')
-  sed_inplace "s|POSTGRES_PASSWORD:.*|POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
+  common::sed_inplace "s|POSTGRES_PASSWORD:.*|POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
   POSTGRES_HOST=$(common::base64_encode "postgress-external-db-primary.$NAME_SPACE_POSTGRES_DB.svc.cluster.local")
-  sed_inplace "s|POSTGRES_HOST:.*|POSTGRES_HOST: ${POSTGRES_HOST}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
+  common::sed_inplace "s|POSTGRES_HOST:.*|POSTGRES_HOST: ${POSTGRES_HOST}|g" "${DIR}/resources/postgres-db/postgres-cred.yaml"
 
   # Validate final configuration apply
   if ! oc apply -f "${DIR}/resources/postgres-db/postgres-cred.yaml" --namespace="${project}"; then
@@ -335,7 +206,7 @@ apply_yaml_files() {
   )
 
   for file in "${files[@]}"; do
-    sed_inplace "s/namespace:.*/namespace: ${project}/g" "$file"
+    common::sed_inplace "s/namespace:.*/namespace: ${project}/g" "$file"
   done
 
   DH_TARGET_URL=$(common::base64_encode "test-backstage-customization-provider-${project}.${K8S_CLUSTER_ROUTER_BASE}")
@@ -352,9 +223,9 @@ apply_yaml_files() {
   envsubst < "${DIR}/auth/secrets-rhdh-secrets.yaml" | oc apply --namespace="${project}" -f -
 
   # Select the configuration file based on the namespace or job
-  config_file=$(select_config_map_file)
+  config_file=$(config::select_config_map_file "$project" "$dir")
   # Apply the ConfigMap with the correct file
-  create_app_config_map "$config_file" "$project"
+  config::create_app_config_map "$config_file" "$project"
 
   common::create_configmap_from_file "dynamic-plugins-config" "$project" \
     "dynamic-plugins-config.yaml" "$dir/resources/config_map/dynamic-plugins-config.yaml"
@@ -420,53 +291,6 @@ deploy_redis_cache() {
   local namespace=$1
   envsubst < "$DIR/resources/redis-cache/redis-secret.yaml" | oc apply --namespace="${namespace}" -f -
   oc apply -f "$DIR/resources/redis-cache/redis-deployment.yaml" --namespace="${namespace}"
-}
-
-# ==============================================================================
-# FUTURE MODULE: lib/config.sh
-# Functions: create_app_config_map, select_config_map_file, create_dynamic_plugins_config,
-#            create_conditional_policies_operator, prepare_operator_app_config
-# ==============================================================================
-
-create_app_config_map() {
-  local config_file=$1
-  local project=$2
-
-  oc create configmap app-config-rhdh \
-    --from-file="app-config-rhdh.yaml"="$config_file" \
-    --namespace="$project" \
-    --dry-run=client -o yaml | oc apply -f -
-}
-
-select_config_map_file() {
-  if [[ "${project}" == *rbac* ]]; then
-    echo "$dir/resources/config_map/app-config-rhdh-rbac.yaml"
-  else
-    echo "$dir/resources/config_map/app-config-rhdh.yaml"
-  fi
-}
-
-create_dynamic_plugins_config() {
-  local base_file=$1
-  local final_file=$2
-  echo "kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: dynamic-plugins
-data:
-  dynamic-plugins.yaml: |" > ${final_file}
-  yq '.global.dynamic' ${base_file} | sed -e 's/^/    /' >> ${final_file}
-}
-
-create_conditional_policies_operator() {
-  local destination_file=$1
-  yq '.upstream.backstage.initContainers[0].command[2]' "${DIR}/value_files/values_showcase-rbac.yaml" | head -n -4 | tail -n +2 > $destination_file
-  sed_inplace 's/\\\$/\$/g' "$destination_file"
-}
-
-prepare_operator_app_config() {
-  local config_file=$1
-  yq e -i '.permission.rbac.conditionalPoliciesFile = "./rbac/conditional-policies.yaml"' ${config_file}
 }
 
 # ==============================================================================
@@ -637,8 +461,8 @@ install_pipelines_operator() {
 }
 
 waitfor_pipelines_operator() {
-  wait_for_deployment "openshift-operators" "pipelines"
-  wait_for_endpoint "tekton-pipelines-webhook" "openshift-pipelines"
+  k8s_wait::deployment "openshift-operators" "pipelines"
+  k8s_wait::endpoint "tekton-pipelines-webhook" "openshift-pipelines"
 }
 
 # Installs the Tekton Pipelines if not already installed (alternative of OpenShift Pipelines for Kubernetes clusters)
@@ -655,8 +479,8 @@ install_tekton_pipelines() {
 
 waitfor_tekton_pipelines() {
   local display_name="tekton-pipelines-webhook"
-  wait_for_deployment "tekton-pipelines" "${display_name}"
-  wait_for_endpoint "tekton-pipelines-webhook" "tekton-pipelines"
+  k8s_wait::deployment "tekton-pipelines" "${display_name}"
+  k8s_wait::endpoint "tekton-pipelines-webhook" "tekton-pipelines"
   k8s_wait::crd "pipelines.tekton.dev" 120 5 || return 1
 }
 
@@ -755,33 +579,6 @@ cluster_setup_k8s_helm() {
   # operator::install_postgres_k8s # Works with K8s but disabled in values file
 }
 
-# Helper function to get common helm set parameters
-get_image_helm_set_params() {
-  local params=""
-
-  # Add image repository
-  params+="--set upstream.backstage.image.repository=${QUAY_REPO} "
-
-  # Add image tag
-  params+="--set upstream.backstage.image.tag=${TAG_NAME} "
-
-  echo "${params}"
-}
-
-# Helper function to perform helm install/upgrade
-perform_helm_install() {
-  local release_name=$1
-  local namespace=$2
-  local value_file=$3
-
-  # shellcheck disable=SC2046
-  helm upgrade -i "${release_name}" -n "${namespace}" \
-    "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
-    -f "${DIR}/value_files/${value_file}" \
-    --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-    $(get_image_helm_set_params)
-}
-
 # ==============================================================================
 # FUTURE MODULE: lib/deployment.sh
 # Functions: base_deployment, rbac_deployment, initiate_deployments,
@@ -793,7 +590,7 @@ perform_helm_install() {
 # ==============================================================================
 
 base_deployment() {
-  configure_namespace ${NAME_SPACE}
+  namespace::configure ${NAME_SPACE}
 
   deploy_redis_cache "${NAME_SPACE}"
 
@@ -804,7 +601,7 @@ base_deployment() {
 
   if should_skip_orchestrator; then
     local merged_pr_value_file="/tmp/merged-values_showcase_PR.yaml"
-    yq_merge_value_files "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase_PR.yaml" "${merged_pr_value_file}"
+    helm::merge_values "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase_PR.yaml" "${merged_pr_value_file}"
     disable_orchestrator_plugins_in_values "${merged_pr_value_file}"
 
     mkdir -p "${ARTIFACT_DIR}/${NAME_SPACE}"
@@ -814,9 +611,9 @@ base_deployment() {
       "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
       -f "${merged_pr_value_file}" \
       --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-      $(get_image_helm_set_params)
+      $(helm::get_image_params)
   else
-    perform_helm_install "${RELEASE_NAME}" "${NAME_SPACE}" "${HELM_CHART_VALUE_FILE_NAME}"
+    helm::install "${RELEASE_NAME}" "${NAME_SPACE}" "${HELM_CHART_VALUE_FILE_NAME}"
   fi
 
   if should_skip_orchestrator; then
@@ -827,8 +624,8 @@ base_deployment() {
 }
 
 rbac_deployment() {
-  configure_namespace "${NAME_SPACE_POSTGRES_DB}"
-  configure_namespace "${NAME_SPACE_RBAC}"
+  namespace::configure "${NAME_SPACE_POSTGRES_DB}"
+  namespace::configure "${NAME_SPACE_RBAC}"
   configure_external_postgres_db "${NAME_SPACE_RBAC}"
 
   # Wait for PostgreSQL to be fully ready before deploying RBAC instance
@@ -845,7 +642,7 @@ rbac_deployment() {
   log::info "Deploying image from repository: ${QUAY_REPO}, TAG_NAME: ${TAG_NAME}, in NAME_SPACE: ${RELEASE_NAME_RBAC}"
   if should_skip_orchestrator; then
     local merged_pr_rbac_value_file="/tmp/merged-values_showcase-rbac_PR.yaml"
-    yq_merge_value_files "merge" "${DIR}/value_files/${HELM_CHART_RBAC_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase-rbac_PR.yaml" "${merged_pr_rbac_value_file}"
+    helm::merge_values "merge" "${DIR}/value_files/${HELM_CHART_RBAC_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase-rbac_PR.yaml" "${merged_pr_rbac_value_file}"
     disable_orchestrator_plugins_in_values "${merged_pr_rbac_value_file}"
 
     mkdir -p "${ARTIFACT_DIR}/${NAME_SPACE_RBAC}"
@@ -855,9 +652,9 @@ rbac_deployment() {
       "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
       -f "${merged_pr_rbac_value_file}" \
       --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-      $(get_image_helm_set_params)
+      $(helm::get_image_params)
   else
-    perform_helm_install "${RELEASE_NAME_RBAC}" "${NAME_SPACE_RBAC}" "${HELM_CHART_RBAC_VALUE_FILE_NAME}"
+    helm::install "${RELEASE_NAME_RBAC}" "${NAME_SPACE_RBAC}" "${HELM_CHART_RBAC_VALUE_FILE_NAME}"
   fi
 
   # NOTE: This is a workaround to allow the sonataflow platform to connect to the external postgres db using ssl.
@@ -865,7 +662,7 @@ rbac_deployment() {
     log::warn "Skipping sonataflow (orchestrator) external DB SSL workaround on PR job: ${JOB_NAME}"
   else
     # Wait for the sonataflow database creation job to complete with robust error handling
-    if ! wait_for_job_completion "${NAME_SPACE_RBAC}" "${RELEASE_NAME_RBAC}-create-sonataflow-database" 10 10; then
+    if ! k8s_wait::job "${NAME_SPACE_RBAC}" "${RELEASE_NAME_RBAC}-create-sonataflow-database" 10 10; then
       echo "❌ Failed to create sonataflow database. Aborting RBAC deployment."
       return 1
     fi
@@ -890,7 +687,7 @@ initiate_deployments() {
 
 # OSD-GCP specific deployment functions that merge diff files and skip orchestrator workflows
 base_deployment_osd_gcp() {
-  configure_namespace ${NAME_SPACE}
+  namespace::configure ${NAME_SPACE}
 
   deploy_redis_cache "${NAME_SPACE}"
 
@@ -899,7 +696,7 @@ base_deployment_osd_gcp() {
   apply_yaml_files "${DIR}" "${NAME_SPACE}" "${rhdh_base_url}"
 
   # Merge base values with OSD-GCP diff file
-  yq_merge_value_files "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_OSD_GCP_DIFF_VALUE_FILE_NAME}" "/tmp/merged-values_showcase_OSD-GCP.yaml"
+  helm::merge_values "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_OSD_GCP_DIFF_VALUE_FILE_NAME}" "/tmp/merged-values_showcase_OSD-GCP.yaml"
   mkdir -p "${ARTIFACT_DIR}/${NAME_SPACE}"
   cp -a "/tmp/merged-values_showcase_OSD-GCP.yaml" "${ARTIFACT_DIR}/${NAME_SPACE}/" # Save the final value-file into the artifacts directory.
 
@@ -910,15 +707,15 @@ base_deployment_osd_gcp() {
     "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
     -f "/tmp/merged-values_showcase_OSD-GCP.yaml" \
     --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-    $(get_image_helm_set_params)
+    $(helm::get_image_params)
 
   # Skip orchestrator workflows deployment for OSD-GCP
   log::warn "Skipping orchestrator workflows deployment on OSD-GCP environment"
 }
 
 rbac_deployment_osd_gcp() {
-  configure_namespace "${NAME_SPACE_POSTGRES_DB}"
-  configure_namespace "${NAME_SPACE_RBAC}"
+  namespace::configure "${NAME_SPACE_POSTGRES_DB}"
+  namespace::configure "${NAME_SPACE_RBAC}"
   configure_external_postgres_db "${NAME_SPACE_RBAC}"
 
   # Initiate rbac instance deployment.
@@ -926,7 +723,7 @@ rbac_deployment_osd_gcp() {
   apply_yaml_files "${DIR}" "${NAME_SPACE_RBAC}" "${rbac_rhdh_base_url}"
 
   # Merge RBAC values with OSD-GCP diff file
-  yq_merge_value_files "merge" "${DIR}/value_files/${HELM_CHART_RBAC_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_RBAC_OSD_GCP_DIFF_VALUE_FILE_NAME}" "/tmp/merged-values_showcase-rbac_OSD-GCP.yaml"
+  helm::merge_values "merge" "${DIR}/value_files/${HELM_CHART_RBAC_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_RBAC_OSD_GCP_DIFF_VALUE_FILE_NAME}" "/tmp/merged-values_showcase-rbac_OSD-GCP.yaml"
   mkdir -p "${ARTIFACT_DIR}/${NAME_SPACE_RBAC}"
   cp -a "/tmp/merged-values_showcase-rbac_OSD-GCP.yaml" "${ARTIFACT_DIR}/${NAME_SPACE_RBAC}/" # Save the final value-file into the artifacts directory.
 
@@ -937,7 +734,7 @@ rbac_deployment_osd_gcp() {
     "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
     -f "/tmp/merged-values_showcase-rbac_OSD-GCP.yaml" \
     --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-    $(get_image_helm_set_params)
+    $(helm::get_image_params)
 
   # Skip orchestrator workflows deployment for OSD-GCP
   log::warn "Skipping orchestrator workflows deployment on OSD-GCP RBAC environment"
@@ -962,7 +759,7 @@ initiate_upgrade_base_deployments() {
   CURRENT_DEPLOYMENT=$((CURRENT_DEPLOYMENT + 1))
   save_status_deployment_namespace $CURRENT_DEPLOYMENT "$namespace"
 
-  configure_namespace "${namespace}"
+  namespace::configure "${namespace}"
 
   deploy_redis_cache "${namespace}"
 
@@ -973,7 +770,7 @@ initiate_upgrade_base_deployments() {
 
   # Get dynamic value file path based on previous release version
   local previous_release_value_file
-  previous_release_value_file=$(get_previous_release_value_file "showcase")
+  previous_release_value_file=$(helm::get_previous_release_values "showcase")
   echo "Using dynamic value file: ${previous_release_value_file}"
 
   helm upgrade -i "${release_name}" -n "${namespace}" \
@@ -995,7 +792,7 @@ initiate_upgrade_deployments() {
   log::info "Initiating upgrade deployment"
   cd "${DIR}"
 
-  yq_merge_value_files "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase_upgrade.yaml" "/tmp/merged_value_file.yaml"
+  helm::merge_values "merge" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/diff-values_showcase_upgrade.yaml" "/tmp/merged_value_file.yaml"
   log::info "Deploying image from repository: ${QUAY_REPO}, TAG_NAME: ${TAG_NAME}, in NAME_SPACE: ${NAME_SPACE}"
 
   helm upgrade -i "${RELEASE_NAME}" -n "${NAME_SPACE}" \
@@ -1013,8 +810,8 @@ initiate_upgrade_deployments() {
 initiate_runtime_deployment() {
   local release_name=$1
   local namespace=$2
-  configure_namespace "${namespace}"
-  uninstall_helmchart "${namespace}" "${release_name}"
+  namespace::configure "${namespace}"
+  helm::uninstall "${namespace}" "${release_name}"
 
   oc apply -f "$DIR/resources/postgres-db/dynamic-plugins-root-PVC.yaml" -n "${namespace}"
 
@@ -1023,7 +820,7 @@ initiate_runtime_deployment() {
     "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
     -f "$DIR/resources/postgres-db/values-showcase-postgres.yaml" \
     --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-    $(get_image_helm_set_params)
+    $(helm::get_image_params)
 }
 
 initiate_sanity_plugin_checks_deployment() {
@@ -1031,11 +828,11 @@ initiate_sanity_plugin_checks_deployment() {
   local name_space_sanity_plugins_check=$2
   local sanity_plugins_url=$3
 
-  configure_namespace "${name_space_sanity_plugins_check}"
-  uninstall_helmchart "${name_space_sanity_plugins_check}" "${release_name}"
+  namespace::configure "${name_space_sanity_plugins_check}"
+  helm::uninstall "${name_space_sanity_plugins_check}" "${release_name}"
   deploy_redis_cache "${name_space_sanity_plugins_check}"
   apply_yaml_files "${DIR}" "${name_space_sanity_plugins_check}" "${sanity_plugins_url}"
-  yq_merge_value_files "overwrite" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_SANITY_PLUGINS_DIFF_VALUE_FILE_NAME}" "/tmp/${HELM_CHART_SANITY_PLUGINS_MERGED_VALUE_FILE_NAME}"
+  helm::merge_values "overwrite" "${DIR}/value_files/${HELM_CHART_VALUE_FILE_NAME}" "${DIR}/value_files/${HELM_CHART_SANITY_PLUGINS_DIFF_VALUE_FILE_NAME}" "/tmp/${HELM_CHART_SANITY_PLUGINS_MERGED_VALUE_FILE_NAME}"
   mkdir -p "${ARTIFACT_DIR}/${name_space_sanity_plugins_check}"
   cp -a "/tmp/${HELM_CHART_SANITY_PLUGINS_MERGED_VALUE_FILE_NAME}" "${ARTIFACT_DIR}/${name_space_sanity_plugins_check}/" || true # Save the final value-file into the artifacts directory.
   # shellcheck disable=SC2046
@@ -1043,7 +840,7 @@ initiate_sanity_plugin_checks_deployment() {
     "${HELM_CHART_URL}" --version "${CHART_VERSION}" \
     -f "/tmp/${HELM_CHART_SANITY_PLUGINS_MERGED_VALUE_FILE_NAME}" \
     --set global.clusterRouterBase="${K8S_CLUSTER_ROUTER_BASE}" \
-    $(get_image_helm_set_params) \
+    $(helm::get_image_params) \
     --set orchestrator.enabled=true
 }
 
@@ -1111,100 +908,11 @@ check_helm_upgrade() {
   fi
 }
 
-# Function to remove finalizers from specific resources in a namespace that are blocking deletion.
-remove_finalizers_from_resources() {
-  local project=$1
-  echo "Removing finalizers from resources in namespace ${project} that are blocking deletion."
-
-  # Remove finalizers from stuck PipelineRuns and TaskRuns
-  for resource_type in "pipelineruns.tekton.dev" "taskruns.tekton.dev"; do
-    for resource in $(oc get "$resource_type" -n "$project" -o name); do
-      oc patch "$resource" -n "$project" --type='merge' -p '{"metadata":{"finalizers":[]}}' || true
-      echo "Removed finalizers from $resource in $project."
-    done
-  done
-
-  # Check and remove specific finalizers stuck on 'chains.tekton.dev' resources
-  for chain_resource in $(oc get pipelineruns.tekton.dev,taskruns.tekton.dev -n "$project" -o name); do
-    oc patch "$chain_resource" -n "$project" --type='json' -p='[{"op": "remove", "path": "/metadata/finalizers"}]' || true
-    echo "Removed Tekton finalizers from $chain_resource in $project."
-  done
-}
-
-# Function to forcibly delete a namespace stuck in 'Terminating' status
-force_delete_namespace() {
-  local project=$1
-  echo "Forcefully deleting namespace ${project}."
-  oc get namespace "$project" -o json | jq '.spec = {"finalizers":[]}' | oc replace --raw "/api/v1/namespaces/$project/finalize" -f -
-
-  local elapsed=0
-  local sleep_interval=2
-  local timeout_seconds=${2:-120}
-
-  while oc get namespace "$project" &> /dev/null; do
-    if [[ $elapsed -ge $timeout_seconds ]]; then
-      log::warn "Timeout: Namespace '${project}' was not deleted within $timeout_seconds seconds." >&2
-      return 1
-    fi
-    sleep $sleep_interval
-    elapsed=$((elapsed + sleep_interval))
-  done
-
-  log::success "Namespace '${project}' successfully deleted."
-}
-
 # ==============================================================================
 # Common Functions - Delegate to lib/common.sh
 # ==============================================================================
-oc_login() { common::oc_login "$@"; }
-
 is_openshift() {
   oc get routes.route.openshift.io &> /dev/null || kubectl get routes.route.openshift.io &> /dev/null
-}
-
-sed_inplace() { common::sed_inplace "$@"; }
-
-get_previous_release_version() { common::get_previous_release_version "$@"; }
-
-get_chart_version() {
-  local chart_major_version=$1
-  curl -sSX GET "https://quay.io/api/v1/repository/rhdh/chart/tag/?onlyActiveTags=true&filter_tag_name=like:${chart_major_version}-" -H "Content-Type: application/json" \
-    | jq '.tags[0].name' | grep -oE '[0-9]+\.[0-9]+-[0-9]+-CI'
-}
-
-# Helper function to get dynamic value file path based on previous release version
-get_previous_release_value_file() {
-  local value_file_type=${1:-"showcase"} # Default to showcase, can be "showcase-rbac" for RBAC
-
-  # Get the previous release version
-  local previous_release_version
-  previous_release_version=$(get_previous_release_version "$CHART_MAJOR_VERSION")
-
-  if [[ -z "$previous_release_version" ]]; then
-    log::error "Failed to determine previous release version." >&2
-    save_overall_result 1
-    exit 1
-  fi
-
-  log::info "Using previous release version: ${previous_release_version}" >&2
-
-  # Construct the GitHub URL for the value file
-  local github_url="https://raw.githubusercontent.com/redhat-developer/rhdh/release-${previous_release_version}/.ibm/pipelines/value_files/values_${value_file_type}.yaml"
-
-  # Create a temporary file path for the downloaded value file
-  local temp_value_file="/tmp/values_${value_file_type}_${previous_release_version}.yaml"
-
-  echo "Fetching value file from: ${github_url}" >&2
-
-  # Download the value file from GitHub
-  if curl -fsSL "${github_url}" -o "${temp_value_file}"; then
-    log::success "Successfully downloaded value file to: ${temp_value_file}" >&2
-    log::info "${temp_value_file}"
-  else
-    log::error "Failed to download value file from GitHub." >&2
-    save_overall_result 1
-    exit 1
-  fi
 }
 
 # Helper function to wait for backstage resource to exist in namespace
