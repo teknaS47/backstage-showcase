@@ -68,5 +68,5 @@ run_localization_tests() {
   local url="https://${RELEASE_NAME}-developer-hub-${NAME_SPACE}.${K8S_CLUSTER_ROUTER_BASE}"
   log::section "Running localization tests"
   # French (fr) - uses custom artifacts_dir to avoid overwriting main showcase test artifacts
-  check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${PW_PROJECT_SHOWCASE_LOCALIZATION_FR}" "${url}" "" "" "${PW_PROJECT_SHOWCASE_LOCALIZATION_FR}"
+  testing::check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${PW_PROJECT_SHOWCASE_LOCALIZATION_FR}" "${url}"
 }
