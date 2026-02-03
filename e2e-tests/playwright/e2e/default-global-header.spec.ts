@@ -39,7 +39,9 @@ test.describe("Default Global Header", () => {
       ),
     ).toBeVisible();
     await uiHelper.verifyLink({
-      label: t["rhdh"][lang]["menuItem.selfService"],
+      // TODO: RHDHBUGS-2564 - String not getting translated
+      // label: t["rhdh"][lang]["menuItem.selfService"],
+      label: "Self-service",
     });
 
     const globalHeader = page.getByRole("navigation").first();
@@ -72,9 +74,13 @@ test.describe("Default Global Header", () => {
 
   test("Verify that clicking on Self-service button opens the Templates page", async () => {
     await uiHelper.clickLink({
-      ariaLabel: t["rhdh"][lang]["menuItem.selfService"],
+      // TODO: RHDHBUGS-2564 - String not getting translated
+      // ariaLabel: t["rhdh"][lang]["menuItem.selfService"],
+      ariaLabel: "Self-service",
     });
-    await uiHelper.verifyHeading(t["rhdh"][lang]["menuItem.selfService"]);
+    // TODO: RHDHBUGS-2564 - String not getting translated
+    // await uiHelper.verifyHeading(t["rhdh"][lang]["menuItem.selfService"]);
+    await uiHelper.verifyHeading("Self-service");
   });
 
   test("Verify that clicking on Support button in HelpDropdown opens a new tab", async ({

@@ -47,8 +47,10 @@ export class ThemeVerifier {
   }
 
   async verifyBorderLeftColor(expectedColor: string) {
-    await this.uiHelper.openSidebar("Home");
-    const homeLinkLocator = this.page.locator("a").filter({ hasText: "Home" });
+    await this.uiHelper.openSidebar(t["rhdh"][lang]["menuItem.home"]);
+    const homeLinkLocator = this.page
+      .locator("a")
+      .filter({ hasText: `${t["rhdh"][lang]["menuItem.home"]}` });
     await expect(homeLinkLocator).toHaveCSS(
       "border-left",
       `3px solid ${expectedColor}`,
@@ -66,7 +68,7 @@ export class ThemeVerifier {
       UI_HELPER_ELEMENTS.MuiSwitchColorPrimary,
       colorPrimary,
     );
-    await this.uiHelper.openSidebar("Catalog");
+    await this.uiHelper.openSidebar(t["rhdh"][lang]["menuItem.catalog"]);
     await this.uiHelper.checkCssColor(
       this.page,
       UI_HELPER_ELEMENTS.MuiButtonTextPrimary,
