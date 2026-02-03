@@ -69,11 +69,11 @@ run_localization_tests() {
   local locales=("FR" "IT" "JA")
 
   log::section "Running localization tests"
-  # Loop through all locales - uses custom artifacts_dir to avoid overwriting main showcase test artifacts
+  # Loop through all locales - uses project name as artifacts_subdir to avoid overwriting test artifacts
   for locale in "${locales[@]}"; do
     local project_var="PW_PROJECT_SHOWCASE_LOCALIZATION_${locale}"
     local project="${!project_var}"
     log::info "Running localization test for ${locale} (project: ${project})"
-    testing::check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${project}" "${url}"
+    testing::check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${project}" "${url}" "" "" "${project}"
   done
 }
