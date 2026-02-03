@@ -24,7 +24,7 @@ handle_ocp_nightly() {
   cluster_setup_ocp_helm
 
   # Use OSD-GCP specific deployment for osd-gcp jobs (orchestrator disabled)
-  if [[ "${JOB_NAME}" =~ osd-gcp ]]; then
+  if [[ "${JOB_NAME}" == *osd-gcp* ]]; then
     log::info "Detected OSD-GCP job, using OSD-GCP specific deployment (orchestrator disabled)"
     initiate_deployments_osd_gcp
   else
@@ -38,7 +38,7 @@ handle_ocp_nightly() {
   run_sanity_plugins_check
 
   # Skip localization tests for OSD-GCP jobs
-  if [[ ! "${JOB_NAME}" =~ osd-gcp ]]; then
+  if [[ "${JOB_NAME}" != *osd-gcp* ]]; then
     run_localization_tests
   fi
 
@@ -66,7 +66,14 @@ run_sanity_plugins_check() {
 
 run_localization_tests() {
   local url="https://${RELEASE_NAME}-developer-hub-${NAME_SPACE}.${K8S_CLUSTER_ROUTER_BASE}"
+  local locales=("FR" "IT" "JA")
+
   log::section "Running localization tests"
-  # French (fr) - uses custom artifacts_dir to avoid overwriting main showcase test artifacts
-  testing::check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${PW_PROJECT_SHOWCASE_LOCALIZATION_FR}" "${url}"
+  # Loop through all locales - uses custom artifacts_dir to avoid overwriting main showcase test artifacts
+  for locale in "${locales[@]}"; do
+    local project_var="PW_PROJECT_SHOWCASE_LOCALIZATION_${locale}"
+    local project="${!project_var}"
+    log::info "Running localization test for ${locale} (project: ${project})"
+    testing::check_and_test "${RELEASE_NAME}" "${NAME_SPACE}" "${project}" "${url}"
+  done
 }
