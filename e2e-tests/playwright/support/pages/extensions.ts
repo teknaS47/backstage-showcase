@@ -101,7 +101,15 @@ export class Extensions {
   async searchExtensions(searchText: string) {
     const searchInput = this.page
       .getByRole("textbox")
-      .getByPlaceholder(t["plugin.extensions"][lang]["search.placeholder"]);
+      .getByLabel(t["plugin.extensions"][lang]["search.placeholder"], {
+        exact: true,
+      })
+      .or(
+        this.page.getByPlaceholder(
+          t["plugin.extensions"][lang]["search.placeholder"],
+          { exact: true },
+        ),
+      );
 
     await searchInput.fill(searchText);
   }
