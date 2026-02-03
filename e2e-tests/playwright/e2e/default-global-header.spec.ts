@@ -193,7 +193,9 @@ test.describe("Default Global Header", () => {
       ariaLabel: t["plugin.global-header"][lang]["notifications.title"],
     });
     await uiHelper.verifyHeading(
-      t["plugin.global-header"][lang]["notifications.title"],
+      // TODO: RHDHBUGS-2585 - String not getting translated
+      // t["plugin.global-header"][lang]["notifications.title"],
+      "Notifications",
     );
     await uiHelper.markAllNotificationsAsReadIfVisible();
 

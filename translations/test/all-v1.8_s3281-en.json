@@ -485,6 +485,7 @@
       "metadata.bySomeone": "by someone",
       "metadata.category": "Category",
       "metadata.versions": "Versions",
+      "metadata.backstageCompatibility": "Backstage compatibility version",
       "supportTypes.certifiedBy": "Certified by {{value}} ({{count}})",
       "supportTypes.verifiedBy": "Verified by {{value}} ({{count}})",
       "supportTypes.customPlugins": "Custom plugins ({{count}})",

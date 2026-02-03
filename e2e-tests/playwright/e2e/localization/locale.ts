@@ -3,7 +3,6 @@ import frCommunityPluginsBase from "../../../../translations/community-plugins-f
 import frRhdh from "../../../../translations/test/rhdh-fr.json" with { type: "json" };
 import frCommunityPlugins from "../../../../translations/test/community-plugins-fr.json" with { type: "json" };
 import frRhdhPlugins from "../../../../translations/test/rhdh-plugins-fr.json" with { type: "json" };
-import frMissingTranslations from "../../../../translations/test/missing-fr-translations.json" with { type: "json" };
 
 import itBackstage from "../../../../translations/backstage-it.json" with { type: "json" };
 import itCommunityPluginsBase from "../../../../translations/community-plugins-it.json" with { type: "json" };
@@ -25,7 +24,6 @@ const fr = {
   ...frRhdh,
   ...frCommunityPlugins,
   ...frRhdhPlugins,
-  ...frMissingTranslations,
 };
 
 const it = {
@@ -84,4 +82,14 @@ export function getCurrentLanguage(): Locale {
 
 export function getTranslations() {
   return translations;
+}
+
+/**
+ * Get a translation string by namespace and key.
+ * Evaluates language at runtime, so works correctly regardless of when module is loaded.
+ * @example tr("plugin.extensions", "common.readMore")
+ */
+export function tr(namespace: string, key: string): string {
+  const lang = getCurrentLanguage();
+  return translations[namespace]?.[lang]?.[key] ?? key;
 }

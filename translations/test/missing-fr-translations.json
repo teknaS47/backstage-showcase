@@ -1,8 +1,0 @@
-{
-  "plugin.extensions": {
-    "fr": {
-      "package.tags": "Mots-clés",
-      "table.pagination.rows": "rangées"
-    }
-  }
-}
