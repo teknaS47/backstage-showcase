@@ -858,6 +858,9 @@ export class UIhelper {
     const quickstartHideButton = this.page.getByRole("button", {
       name: t["plugin.quickstart"][lang]["footer.hide"],
     });
+    const progressBars = this.page.getByTestId("progress");
+    await expect(progressBars).toHaveCount(0);
+
     if (!(await quickstartHideButton.isVisible())) {
       await this.clickButtonByLabel("Help");
       await this.clickByDataTestId("quickstart-button");
