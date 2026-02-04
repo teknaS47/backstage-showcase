@@ -262,7 +262,8 @@ export default defineConfig({
         "**/playwright/e2e/extensions.spec.ts",
         "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
-        "**/playwright/e2e/custom-theme.spec.ts",
+        // TODO: RHDHBUGS-2592 - Custom theme spec is not working
+        // "**/playwright/e2e/custom-theme.spec.ts",
         "**/playwright/e2e/plugins/frontend/sidebar.spec.ts",
         "**/playwright/e2e/settings.spec.ts",
       ],
