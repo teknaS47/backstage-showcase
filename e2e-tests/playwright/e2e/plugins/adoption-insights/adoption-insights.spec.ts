@@ -23,6 +23,7 @@ test.describe.serial("Test Adoption Insights", () => {
     let page;
     let testHelper: TestHelper;
     let uiHelper: UIhelper;
+    let common: Common;
     let initialSearchCount: number;
     let templatesFirstEntry: string[];
     let catalogEntitiesFirstEntry: string[];
@@ -33,8 +34,9 @@ test.describe.serial("Test Adoption Insights", () => {
       context = await browser.newContext();
       page = await context.newPage();
       uiHelper = new UIhelper(page);
+      common = new Common(page);
       testHelper = new TestHelper(page);
-      await new Common(page).loginAsKeycloakUser();
+      await common.loginAsKeycloakUser();
       await uiHelper.goToPageUrl("/", "Welcome back!");
     });
 
@@ -148,6 +150,7 @@ test.describe.serial("Test Adoption Insights", () => {
 
         await uiHelper.clickLink("Catalog");
         await page.reload();
+        await common.waitForLoad();
         await testHelper.waitUntilApiCallSucceeds(page);
         await uiHelper.openSidebarButton("Administration");
 
@@ -225,6 +228,7 @@ test.describe.serial("Test Adoption Insights", () => {
           }
         }
         await page.reload();
+        await common.waitForLoad();
         await testHelper.waitUntilApiCallSucceeds(page);
         await uiHelper.openSidebarButton("Administration");
         await uiHelper.clickLink("Adoption Insights");
