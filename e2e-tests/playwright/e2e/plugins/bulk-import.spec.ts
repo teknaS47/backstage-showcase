@@ -144,7 +144,7 @@ spec:
       "Preview file",
     );
 
-    await expect(await uiHelper.clickButton("Save")).not.toBeVisible();
+    await expect(await uiHelper.clickButton("Save")).toBeHidden();
     await expect(await uiHelper.clickButton("Import")).toBeDisabled();
   });
 
