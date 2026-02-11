@@ -56,7 +56,7 @@ test.describe.serial("GitHub Happy path", async () => {
   test("Import an existing Git repository", async () => {
     await uiHelper.openSidebar("Catalog");
     await uiHelper.selectMuiBox("Kind", "Component");
-    await uiHelper.clickButton("Self-service");
+    await uiHelper.goToSelfServicePage();
     await uiHelper.clickButton("Import an existing Git repository");
     await catalogImport.registerExistingComponent(component);
   });
