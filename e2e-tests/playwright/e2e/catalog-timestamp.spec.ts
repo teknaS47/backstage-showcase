@@ -5,6 +5,7 @@ import { CatalogImport } from "../support/pages/catalog-import";
 import { UI_HELPER_ELEMENTS } from "../support/page-objects/global-obj";
 
 let page: Page;
+
 test.describe("Test timestamp column on Catalog", () => {
   test.skip(() => process.env.JOB_NAME.includes("osd-gcp")); // skipping due to RHIDP-5704 on OSD Env
 
@@ -37,7 +38,7 @@ test.describe("Test timestamp column on Catalog", () => {
   });
 
   test("Import an existing Git repository and verify `Created At` column and value in the Catalog Page", async () => {
-    await uiHelper.clickButton("Self-service");
+    await uiHelper.goToSelfServicePage();
     await uiHelper.clickButton("Import an existing Git repository");
     await catalogImport.registerExistingComponent(component);
     await uiHelper.openCatalogSidebar("Component");

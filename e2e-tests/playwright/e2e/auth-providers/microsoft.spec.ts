@@ -156,7 +156,7 @@ test.describe("Configure Microsoft Provider", async () => {
     );
     expect(login).toBe("Login successful");
 
-    await uiHelper.goToPageUrl("/settings", "Settings");
+    await uiHelper.goToSettingsPage();
     await uiHelper.verifyHeading("TEST Zeus");
     await common.signOut();
     await context.clearCookies();
@@ -183,7 +183,7 @@ test.describe("Configure Microsoft Provider", async () => {
     );
     expect(login).toBe("Login successful");
 
-    await uiHelper.goToPageUrl("/settings", "Settings");
+    await uiHelper.goToSettingsPage();
     await uiHelper.verifyHeading("TEST Zeus");
     await common.signOut();
     await context.clearCookies();
@@ -219,51 +219,48 @@ test.describe("Configure Microsoft Provider", async () => {
     );
     expect(login).toBe("Login successful");
 
-    await uiHelper.goToPageUrl("/settings", "Settings");
+    await uiHelper.goToSettingsPage();
     await uiHelper.verifyHeading("TEST Zeus");
     await common.signOut();
     await context.clearCookies();
   });
 
   //TODO: entiny name is "name": "zeus_rhdhtesting.onmicrosoft.com", email is "email": "zeus@rhdhtesting.onmicrosoft.com" not resolving?
-  test.fixme(
-    "Login with Microsoft emailLocalPartMatchingUserEntityName resolver",
-    async () => {
-      //A common sign-in resolver that looks up the user using the local part of their email address as the entity name.
-      await deployment.setMicrosoftResolver(
-        "emailLocalPartMatchingUserEntityName",
-        false,
-      );
-      await deployment.updateAllConfigs();
-      await deployment.restartLocalDeployment();
-      await page.waitForTimeout(3000);
-      await deployment.waitForDeploymentReady();
+  test.fixme("Login with Microsoft emailLocalPartMatchingUserEntityName resolver", async () => {
+    //A common sign-in resolver that looks up the user using the local part of their email address as the entity name.
+    await deployment.setMicrosoftResolver(
+      "emailLocalPartMatchingUserEntityName",
+      false,
+    );
+    await deployment.updateAllConfigs();
+    await deployment.restartLocalDeployment();
+    await page.waitForTimeout(3000);
+    await deployment.waitForDeploymentReady();
 
-      // wait for rhdh first sync and portal to be reachable
-      await deployment.waitForSynced();
+    // wait for rhdh first sync and portal to be reachable
+    await deployment.waitForSynced();
 
-      const login = await common.MicrosoftAzureLogin(
-        "zeus@rhdhtesting.onmicrosoft.com",
-        process.env.DEFAULT_USER_PASSWORD_2,
-      );
-      expect(login).toBe("Login successful");
+    const login = await common.MicrosoftAzureLogin(
+      "zeus@rhdhtesting.onmicrosoft.com",
+      process.env.DEFAULT_USER_PASSWORD_2,
+    );
+    expect(login).toBe("Login successful");
 
-      await uiHelper.goToPageUrl("/settings", "Settings");
-      await uiHelper.verifyHeading("TEST Zeus");
-      await common.signOut();
-      await context.clearCookies();
+    await uiHelper.goToSettingsPage();
+    await uiHelper.verifyHeading("TEST Zeus");
+    await common.signOut();
+    await context.clearCookies();
 
-      const login2 = await common.MicrosoftAzureLogin(
-        "tyke@rhdhtesting.onmicrosoft.com",
-        process.env.DEFAULT_USER_PASSWORD_2,
-      );
-      expect(login2).toBe("Login successful");
+    const login2 = await common.MicrosoftAzureLogin(
+      "tyke@rhdhtesting.onmicrosoft.com",
+      process.env.DEFAULT_USER_PASSWORD_2,
+    );
+    expect(login2).toBe("Login successful");
 
-      await uiHelper.verifyAlertErrorMessage(
-        NO_USER_FOUND_IN_CATALOG_ERROR_MESSAGE,
-      );
-    },
-  );
+    await uiHelper.verifyAlertErrorMessage(
+      NO_USER_FOUND_IN_CATALOG_ERROR_MESSAGE,
+    );
+  });
 
   test(`Set Micrisoft sessionDuration and confirm in auth cookie duration has been set`, async () => {
     deployment.setAppConfigProperty(
@@ -299,7 +296,7 @@ test.describe("Configure Microsoft Provider", async () => {
     expect(actualDuration).toBeGreaterThan(threeDays - tolerance);
     expect(actualDuration).toBeLessThan(threeDays + tolerance);
 
-    await uiHelper.goToPageUrl("/settings", "Settings");
+    await uiHelper.goToSettingsPage();
     await uiHelper.verifyHeading("TEST Zeus");
     await common.signOut();
   });

@@ -50,8 +50,7 @@ test.describe("Default Global Header", () => {
   });
 
   test("Verify that clicking on Self-service button opens the Templates page", async () => {
-    await uiHelper.clickLink({ ariaLabel: "Self-service" });
-    await uiHelper.verifyHeading("Self-service");
+    await uiHelper.goToSelfServicePage();
   });
 
   test("Verify that clicking on Support button in HelpDropdown opens a new tab", async ({
