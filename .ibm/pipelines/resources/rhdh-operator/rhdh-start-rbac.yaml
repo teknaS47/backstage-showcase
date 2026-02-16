@@ -14,8 +14,6 @@ spec:
             initContainers:
               - name: install-dynamic-plugins
                 image: "quay.io/$QUAY_REPO:$TAG_NAME"
-<<<<<<< fix/ocp-operator-configmap-polling
-=======
             volumes:
               - name: dynamic-plugins-root
                 ephemeral:
@@ -26,7 +24,6 @@ spec:
                       resources:
                         requests:
                           storage: 5Gi
->>>>>>> main
   application:
     appConfig:
       configMaps:
