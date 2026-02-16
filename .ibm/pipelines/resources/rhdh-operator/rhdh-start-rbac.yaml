@@ -14,6 +14,19 @@ spec:
             initContainers:
               - name: install-dynamic-plugins
                 image: "quay.io/$QUAY_REPO:$TAG_NAME"
+<<<<<<< fix/ocp-operator-configmap-polling
+=======
+            volumes:
+              - name: dynamic-plugins-root
+                ephemeral:
+                  volumeClaimTemplate:
+                    spec:
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 5Gi
+>>>>>>> main
   application:
     appConfig:
       configMaps:
@@ -28,6 +41,10 @@ spec:
           value: "0"
         - name: NODE_ENV
           value: "production"
+        - name: CATALOG_INDEX_IMAGE
+          value: "quay.io/rhdh/plugin-catalog-index:1.10"
+          containers:
+            - install-dynamic-plugins
       secrets:
         - name: rhdh-secrets
     extraFiles:
