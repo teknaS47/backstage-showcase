@@ -443,18 +443,30 @@ orchestrator::enable_plugins_operator() {
 
   # Merge the plugins arrays: custom plugins override operator defaults
   # Uses package name as the unique key for deduplication
+  # Only merge plugin entries that have a .package field (required by install-dynamic-plugins.py)
+  # Drop plugins with {{inherit}} in .package: the installer requires a same-image entry with
+  # explicit version in an included file; operator default often references registry.access.redhat.com
+  # with {{inherit}} while the catalog uses ghcr.io with explicit tags, so inherit would fail.
   # The select(di == 0) filter prevents yq from outputting multiple YAML documents
   log::info "Merging custom and default dynamic plugins..."
   local merged_yaml
   if ! merged_yaml=$(yq eval-all '
     select(fileIndex == 0) as $default |
     select(fileIndex == 1) as $custom |
+    (($default.plugins // []) + ($custom.plugins // [])) | map(select(has("package"))) | group_by(.package) | map(.[-1]) | map(select(.package | contains("{{inherit}}") | not)) as $plugins |
     {
       "includes": (($default.includes // []) + ($custom.includes // [])) | unique,
-      "plugins": (($default.plugins // []) + ($custom.plugins // [])) | group_by(.package) | map(.[-1])
+      "plugins": $plugins
     }
   ' "$work_dir/default-plugins.yaml" "$work_dir/custom-plugins.yaml" | yq eval 'select(di == 0)' -); then
     log::error "Failed to merge dynamic plugins configmaps"
+    return 1
+  fi
+
+  # Ensure merged result is valid for install-dynamic-plugins.py (plugins must be a list)
+  if ! echo "$merged_yaml" | yq eval '.plugins | type' - 2> /dev/null | grep -q "!!seq"; then
+    log::error "Merged dynamic-plugins.yaml has invalid structure: .plugins must be a list. Refusing to patch."
+    log::error "Merged YAML (first 500 chars): $(echo "$merged_yaml" | head -c 500)"
     return 1
   fi
 
