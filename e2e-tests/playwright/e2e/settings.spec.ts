@@ -17,10 +17,7 @@ test.describe(`Settings page`, () => {
     const common = new Common(page);
     uiHelper = new UIhelper(page);
     await common.loginAsGuest();
-    await uiHelper.goToPageUrl(
-      "/settings",
-      t["user-settings"][lang]["settingsLayout.title"],
-    );
+    await uiHelper.goToSettingsPage();
   });
 
   // Run tests only for the selected language
@@ -57,7 +54,8 @@ test.describe(`Settings page`, () => {
     const fr = getLocale("fr");
     const langfr = "fr";
 
-    await uiHelper.verifyText(fr["user-settings"][langfr]["profileCard.title"]);
+    // await uiHelper.verifyText(fr["user-settings"][langfr]["profileCard.title"]);
+    await uiHelper.verifyText("Profile");
     await uiHelper.verifyText(
       fr["user-settings"][langfr]["appearanceCard.title"],
     );

@@ -71,9 +71,7 @@ test.describe("Default Global Header", () => {
   });
 
   test("Verify that clicking on Self-service button opens the Templates page", async () => {
-    await uiHelper.clickLink({
-      ariaLabel: t["rhdh"][lang]["menuItem.selfService"],
-    });
+    await uiHelper.goToSelfServicePage();
     await uiHelper.verifyHeading(t["rhdh"][lang]["menuItem.selfService"]);
   });
 
