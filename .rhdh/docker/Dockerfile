@@ -15,7 +15,7 @@
 
 # Stage 1 - Build nodejs skeleton
 # https://registry.access.redhat.com/ubi9/nodejs-22
-FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1770626511@sha256:b7c468c6cafa40380bf6cd8c89ad2f94ad4c85e47e2fa6e2e4a33d0c5d0c8ef7 AS skeleton
+FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1771417881@sha256:f8791abdf63c56a90e3f6c427fc5b6baef019b26124c23a208ac27d3bb79bc71 AS skeleton
 # hadolint ignore=DL3002
 USER 0
 
@@ -230,7 +230,7 @@ RUN hadFail=0; for d in $(find /tmp -name "yarn*log*" || true) $(find /tmp/xfs-*
 
 # Stage 5 - Build the runner image
 # https://registry.access.redhat.com/ubi9/nodejs-22-minimal
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.7-1770309067@sha256:449f3e1b0a9c1ef766777ca84ea89bcc040a96d5f6d456c3a9acdd558dfc2b4f AS runner
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.7-1771388883@sha256:aeb1821b8860768c8b7a9f69386293dac27d3a9bb212a5db23890441e4eb1151 AS runner
 USER 0
 
 ENV EXTERNAL_SOURCE_NESTED=.
