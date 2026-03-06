@@ -263,7 +263,7 @@ export class UIhelper {
 
   async goToSelfServicePage() {
     await this.clickLink({
-      ariaLabel: t["rhdh"][lang]["menuItem.selfService"],
+      ariaLabel: "Self-service",
     });
     await this.verifyHeading(t["rhdh"][lang]["menuItem.selfService"]);
   }

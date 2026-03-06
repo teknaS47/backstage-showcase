@@ -39,7 +39,7 @@ test.describe("Default Global Header", () => {
       ),
     ).toBeVisible();
     await uiHelper.verifyLink({
-      label: t["rhdh"][lang]["menuItem.selfService"],
+      label: "Self-service",
     });
 
     const globalHeader = page.getByRole("navigation").first();
