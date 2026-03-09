@@ -487,7 +487,7 @@ test.describe("Admin > Extensions", () => {
       await page
         .getByRole("button", {
           name: new RegExp(
-            `Rows per page: 5 ${t["plugin.extensions"][lang]["table.pagination.rows"]}`,
+            `Rows per page: ${t["plugin.extensions"][lang]["table.pagination.rows5"]}`,
           ),
         })
         .click();
@@ -495,14 +495,14 @@ test.describe("Admin > Extensions", () => {
       await page
         .getByRole("button", {
           name: new RegExp(
-            `Rows per page: 10 ${t["plugin.extensions"][lang]["table.pagination.rows"]}`,
+            `Rows per page: ${t["plugin.extensions"][lang]["table.pagination.rows10"]}`,
           ),
         })
         .scrollIntoViewIfNeeded();
       await expect(
         page.getByRole("button", {
           name: new RegExp(
-            `Rows per page: 10 ${t["plugin.extensions"][lang]["table.pagination.rows"]}`,
+            `Rows per page: ${t["plugin.extensions"][lang]["table.pagination.rows10"]}`,
           ),
         }),
       ).toBeVisible();
