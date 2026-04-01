@@ -34,7 +34,9 @@ test.describe(`Settings page`, () => {
     );
     await page
       .getByTestId("select")
-      .getByRole("button", { name: /English|Deutsch|Español|Français|Italiano|日本語/ })
+      .getByRole("button", {
+        name: /English|Deutsch|Español|Français|Italiano|日本語/,
+      })
       .click();
     await expect(page.getByRole("listbox")).toMatchAriaSnapshot(`
     - listbox:
