@@ -6200,7 +6200,7 @@ __metadata:
 
 "@backstage/plugin-techdocs-node@patch:@backstage/plugin-techdocs-node@npm%3A1.13.6#./.yarn/patches/@backstage-plugin-techdocs-node-npm-1.13.6-0ad8839a3e.patch::locator=dynamic-plugins-root%40workspace%3A.":
   version: 1.13.6
-  resolution: "@backstage/plugin-techdocs-node@patch:@backstage/plugin-techdocs-node@npm%3A1.13.6#./.yarn/patches/@backstage-plugin-techdocs-node-npm-1.13.6-0ad8839a3e.patch::version=1.13.6&hash=faaddf&locator=dynamic-plugins-root%40workspace%3A."
+  resolution: "@backstage/plugin-techdocs-node@patch:@backstage/plugin-techdocs-node@npm%3A1.13.6#./.yarn/patches/@backstage-plugin-techdocs-node-npm-1.13.6-0ad8839a3e.patch::version=1.13.6&hash=d227cd&locator=dynamic-plugins-root%40workspace%3A."
   dependencies:
     "@aws-sdk/client-s3": ^3.350.0
     "@aws-sdk/credential-providers": ^3.350.0
@@ -6231,7 +6231,7 @@ __metadata:
     p-limit: ^3.1.0
     recursive-readdir: ^2.2.2
     winston: ^3.2.1
-  checksum: 9c1cdd1d1f04fda164101b04c57132515d234600059d246d728674eccfa3fffc46dfa72cdc33918cb035fde20c18b1aecb8d8a096934480c50267a8d0986a948
+  checksum: a9504df50578dc61e02ff0515c6d12a9cf4bfa19a500e47e2649205529823752fd11b255f1d19da0e4b85f0feab218faa9c4dbc880ed10dbaa2fb8811776eef4
   languageName: node
   linkType: hard
 
