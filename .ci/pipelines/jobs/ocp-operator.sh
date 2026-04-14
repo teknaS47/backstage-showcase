@@ -89,8 +89,8 @@ run_operator_runtime_config_change_tests() {
 }
 
 handle_ocp_operator() {
-  export NAME_SPACE="${NAME_SPACE:-showcase}"
-  export NAME_SPACE_RBAC="${NAME_SPACE_RBAC:-showcase-rbac}"
+  export NAME_SPACE="showcase-operator"
+  export NAME_SPACE_RBAC="showcase-operator-rbac"
   export NAME_SPACE_RUNTIME="${NAME_SPACE_RUNTIME:-showcase-runtime}"
 
   common::oc_login

@@ -591,7 +591,9 @@ orchestrator::deploy_workflows_operator() {
 
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
-  # Backstage readiness depends on data-index-service being resolvable
+
+  log::info "Restarting backstage-rhdh now that SonataFlow services are available..."
+  oc rollout restart deployment/backstage-rhdh -n "$namespace"
   k8s_wait::deployment "$namespace" backstage-rhdh 15
 
   local sonataflow_db="backstage_plugin_orchestrator"
@@ -725,17 +727,7 @@ orchestrator::enable_plugins_operator() {
 
   log::info "Merged dynamic plugins configmap updated"
 
-  # Find and restart the backstage deployment
-  local backstage_deployment
-  backstage_deployment=$(oc get deployment -n "$namespace" -o name 2> /dev/null | grep "backstage" | grep -v "psql" | head -1 | sed 's#deployment.apps/##')
-
-  if [[ -n "$backstage_deployment" ]]; then
-    log::info "Restarting deployment/$backstage_deployment to pick up plugin changes..."
-    oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
-    # Readiness is checked later by deploy_workflows_operator, after SonataFlow services are up
-    log::info "Backstage restart triggered"
-  fi
-
+  # deploy_workflows_operator restarts Backstage after SonataFlow services are up
   log::success "Orchestrator plugins enabled successfully"
   return 0
 }
