@@ -181,6 +181,30 @@ _orchestrator::apply_manifests() {
   return 0
 }
 
+# Function: _orchestrator::create_sonataflow_platform
+# Description: Create a SonataFlowPlatform CR so the operator deploys
+#   data-index-service and jobs-service (Helm path gets these from its subchart).
+# Arguments:
+#   $1 - namespace: Kubernetes namespace
+_orchestrator::create_sonataflow_platform() {
+  local namespace=$1
+
+  log::info "Creating SonataFlowPlatform CR in namespace $namespace"
+  oc apply -n "$namespace" -f - << 'EOF'
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlowPlatform
+metadata:
+  name: sonataflow-platform
+spec:
+  services:
+    dataIndex:
+      enabled: true
+    jobService:
+      enabled: true
+EOF
+  return 0
+}
+
 # Function: _orchestrator::wait_for_sonataflow_resources
 # Description: Wait for sonataflow resources to be created
 # Arguments:
@@ -540,21 +564,14 @@ orchestrator::deploy_workflows() {
 orchestrator::deploy_workflows_operator() {
   local namespace=$1
 
-  # Clone workflows repository (shallow for speed)
   _orchestrator::clone_workflows "true"
 
-  # Wait for backstage and sonataflow pods to be ready
   k8s_wait::deployment "$namespace" backstage-psql 15
-  k8s_wait::deployment "$namespace" backstage-rhdh 15
-  k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
-  k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  # Dynamic PostgreSQL configuration discovery
   local pqsl_secret_name pqsl_svc_name
   pqsl_secret_name=$(oc get secrets -n "$namespace" -o name | grep "backstage-psql" | grep "secret" | head -1 | sed 's/secret\///')
   pqsl_svc_name=$(oc get svc -n "$namespace" -o name | grep "backstage-psql" | grep -v "secret" | head -1 | sed 's/service\///')
 
-  # Validate discovered resources
   if [[ -z "$pqsl_secret_name" ]]; then
     log::error "No PostgreSQL secret found matching pattern 'backstage-psql.*secret' in namespace '$namespace'"
     return 1
@@ -568,11 +585,15 @@ orchestrator::deploy_workflows_operator() {
   log::info "Found PostgreSQL secret: $pqsl_secret_name"
   log::info "Found PostgreSQL service: $pqsl_svc_name"
 
-  # Apply manifests and wait for resources
+  _orchestrator::create_sonataflow_platform "$namespace"
   _orchestrator::apply_manifests "$namespace"
   _orchestrator::wait_for_sonataflow_resources "$namespace"
 
-  # Patch each workflow with PostgreSQL configuration (including database name)
+  k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
+  k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
+  # Backstage readiness depends on data-index-service being resolvable
+  k8s_wait::deployment "$namespace" backstage-rhdh 15
+
   local sonataflow_db="backstage_plugin_orchestrator"
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     _orchestrator::patch_workflow_postgres "$namespace" "$workflow" \
@@ -645,7 +666,9 @@ orchestrator::enable_plugins_operator() {
   # Create temporary working directory for merge operation
   local work_dir="/tmp/orchestrator-plugins-merge-$$"
   mkdir -p "$work_dir"
-  trap 'rm -rf "$work_dir"' RETURN
+  # Expand $work_dir now; locals may be unset before the RETURN trap fires under set -u
+  # shellcheck disable=SC2064
+  trap "rm -rf $(printf '%q' "$work_dir")" RETURN
 
   # Extract the YAML content from both configmaps to files
   log::info "Extracting dynamic plugins configmaps..."
@@ -709,7 +732,8 @@ orchestrator::enable_plugins_operator() {
   if [[ -n "$backstage_deployment" ]]; then
     log::info "Restarting deployment/$backstage_deployment to pick up plugin changes..."
     oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
-    k8s_wait::deployment "$namespace" "$backstage_deployment" 15
+    # Readiness is checked later by deploy_workflows_operator, after SonataFlow services are up
+    log::info "Backstage restart triggered"
   fi
 
   log::success "Orchestrator plugins enabled successfully"

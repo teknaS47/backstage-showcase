@@ -26,7 +26,6 @@ initiate_operator_deployments() {
   deploy_rhdh_operator "${NAME_SPACE}" "${DIR}/resources/rhdh-operator/rhdh-start.yaml"
   enable_orchestrator_plugins_op "${NAME_SPACE}"
   deploy_orchestrator_workflows_operator "${NAME_SPACE}"
-  log::warn "Skipping orchestrator plugins and workflows deployment on Operator $NAME_SPACE deployment"
 
   namespace::configure "${NAME_SPACE_RBAC}"
   config::prepare_operator_app_config "${DIR}/resources/config_map/app-config-rhdh-rbac.yaml"
@@ -38,7 +37,6 @@ initiate_operator_deployments() {
   deploy_rhdh_operator "${NAME_SPACE_RBAC}" "${DIR}/resources/rhdh-operator/rhdh-start-rbac.yaml"
   enable_orchestrator_plugins_op "${NAME_SPACE_RBAC}"
   deploy_orchestrator_workflows_operator "${NAME_SPACE_RBAC}"
-  log::warn "Skipping orchestrator plugins and workflows deployment on Operator $NAME_SPACE_RBAC deployment"
 }
 
 # OSD-GCP specific operator deployment that skips orchestrator workflows
