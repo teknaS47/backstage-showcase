@@ -592,9 +592,14 @@ orchestrator::deploy_workflows_operator() {
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  log::info "Restarting backstage-rhdh now that SonataFlow services are available..."
-  oc rollout restart deployment/backstage-rhdh -n "$namespace"
-  k8s_wait::deployment "$namespace" backstage-rhdh 15
+  local backstage_deployment="backstage-rhdh"
+  if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
+    backstage_deployment="backstage-rhdh-rbac"
+  fi
+
+  log::info "Restarting $backstage_deployment now that SonataFlow services are available..."
+  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
+  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
 
   local sonataflow_db="backstage_plugin_orchestrator"
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
