@@ -586,20 +586,12 @@ orchestrator::deploy_workflows_operator() {
   log::info "Found PostgreSQL service: $pqsl_svc_name"
 
   _orchestrator::create_sonataflow_platform "$namespace"
-  _orchestrator::apply_manifests "$namespace"
-  _orchestrator::wait_for_sonataflow_resources "$namespace"
 
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  local backstage_deployment="backstage-rhdh"
-  if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
-    backstage_deployment="backstage-rhdh-rbac"
-  fi
-
-  log::info "Restarting $backstage_deployment now that SonataFlow services are available..."
-  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
-  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
+  _orchestrator::apply_manifests "$namespace"
+  _orchestrator::wait_for_sonataflow_resources "$namespace"
 
   local sonataflow_db="backstage_plugin_orchestrator"
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
@@ -609,6 +601,15 @@ orchestrator::deploy_workflows_operator() {
   done
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
+
+  local backstage_deployment="backstage-rhdh"
+  if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
+    backstage_deployment="backstage-rhdh-rbac"
+  fi
+
+  log::info "Restarting $backstage_deployment now that all workflows are healthy..."
+  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
+  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
   return 0
 }
 
@@ -698,16 +699,17 @@ orchestrator::enable_plugins_operator() {
   # Merge the plugins arrays: custom plugins override operator defaults
   # Uses package name as the unique key for deduplication
   # Only merge plugin entries that have a .package field (required by install-dynamic-plugins.py)
-  # Drop plugins with {{inherit}} in .package: the installer requires a same-image entry with
-  # explicit version in an included file; operator default often references registry.access.redhat.com
-  # with {{inherit}} while the catalog uses ghcr.io with explicit tags, so inherit would fail.
+  # Drop plugins with {{inherit}} in .package UNLESS they carry pluginConfig; the installer
+  # resolves {{inherit}} from the includes file for registry.access.redhat.com packages, but
+  # bare {{inherit}} entries without custom config are redundant with the included defaults.
+  # Keeping entries that have pluginConfig preserves critical settings like dataIndexService URL.
   # The select(di == 0) filter prevents yq from outputting multiple YAML documents
   log::info "Merging custom and default dynamic plugins..."
   local merged_yaml
   if ! merged_yaml=$(yq eval-all '
     select(fileIndex == 0) as $default |
     select(fileIndex == 1) as $custom |
-    (($default.plugins // []) + ($custom.plugins // [])) | map(select(has("package"))) | group_by(.package) | map(.[-1]) | map(select(.package | contains("{{inherit}}") | not)) as $plugins |
+    (($default.plugins // []) + ($custom.plugins // [])) | map(select(has("package"))) | group_by(.package) | map(.[-1]) | map(select((.package | contains("{{inherit}}") | not) or has("pluginConfig"))) as $plugins |
     {
       "includes": (($default.includes // []) + ($custom.includes // [])) | unique,
       "plugins": $plugins
