@@ -587,7 +587,7 @@ orchestrator::deploy_workflows_operator() {
 
   local pqsl_user_key="POSTGRES_USER"
   local pqsl_password_key="POSTGRES_PASSWORD"
-  if oc get secret "$pqsl_secret_name" -n "$namespace" -o jsonpath='{.data.user}' 2>/dev/null | grep -q .; then
+  if oc get secret "$pqsl_secret_name" -n "$namespace" -o jsonpath='{.data.user}' 2> /dev/null | grep -q .; then
     pqsl_user_key="user"
     pqsl_password_key="password"
     log::info "Detected Crunchy-style secret keys (user/password)"
