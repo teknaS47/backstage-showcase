@@ -585,18 +585,38 @@ orchestrator::deploy_workflows_operator() {
   log::info "Found PostgreSQL secret: $pqsl_secret_name"
   log::info "Found PostgreSQL service: $pqsl_svc_name"
 
+  local pqsl_user_key="POSTGRES_USER"
+  local pqsl_password_key="POSTGRES_PASSWORD"
+  if oc get secret "$pqsl_secret_name" -n "$namespace" -o jsonpath='{.data.user}' 2>/dev/null | grep -q .; then
+    pqsl_user_key="user"
+    pqsl_password_key="password"
+    log::info "Detected Crunchy-style secret keys (user/password)"
+  else
+    log::info "Using standard secret keys (POSTGRES_USER/POSTGRES_PASSWORD)"
+  fi
+
   _orchestrator::create_sonataflow_platform "$namespace"
 
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  _orchestrator::apply_manifests "$namespace"
-  _orchestrator::wait_for_sonataflow_resources "$namespace"
-
   local sonataflow_db="backstage_plugin_orchestrator"
+  local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
+    case "$workflow" in
+      greeting) workflow_manifests="${GREETING_MANIFESTS}" ;;
+      failswitch) workflow_manifests="${FAILSWITCH_MANIFESTS}" ;;
+      *)
+        log::error "Unknown workflow: $workflow"
+        return 1
+        ;;
+    esac
+
+    log::info "Deploying workflow '$workflow'..."
+    oc apply -f "${workflow_manifests}" -n "$namespace"
+
     _orchestrator::patch_workflow_postgres "$namespace" "$workflow" \
-      "$pqsl_secret_name" "POSTGRES_USER" "POSTGRES_PASSWORD" \
+      "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" \
       "$pqsl_svc_name" "$namespace" "$sonataflow_db"
   done
 
