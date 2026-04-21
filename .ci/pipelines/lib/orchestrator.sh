@@ -183,14 +183,24 @@ _orchestrator::apply_manifests() {
 
 # Function: _orchestrator::create_sonataflow_platform
 # Description: Create a SonataFlowPlatform CR so the operator deploys
-#   data-index-service and jobs-service (Helm path gets these from its subchart).
+#   data-index-service and jobs-service with PostgreSQL persistence.
+#   Without persistence, data-index uses in-memory H2 and cannot track
+#   workflow executions (it only sees definitions from the CRD).
 # Arguments:
 #   $1 - namespace: Kubernetes namespace
+#   $2 - secret_name: PostgreSQL secret name
+#   $3 - user_key: key for the username in the secret
+#   $4 - password_key: key for the password in the secret
+#   $5 - svc_name: PostgreSQL service name
 _orchestrator::create_sonataflow_platform() {
   local namespace=$1
+  local secret_name=$2
+  local user_key=$3
+  local password_key=$4
+  local svc_name=$5
 
-  log::info "Creating SonataFlowPlatform CR in namespace $namespace"
-  oc apply -n "$namespace" -f - << 'EOF'
+  log::info "Creating SonataFlowPlatform CR in namespace $namespace (persistence: $svc_name)"
+  oc apply -n "$namespace" -f - << EOF
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlowPlatform
 metadata:
@@ -199,8 +209,26 @@ spec:
   services:
     dataIndex:
       enabled: true
+      persistence:
+        postgresql:
+          secretRef:
+            name: $secret_name
+            userKey: $user_key
+            passwordKey: $password_key
+          serviceRef:
+            name: $svc_name
+            namespace: $namespace
     jobService:
       enabled: true
+      persistence:
+        postgresql:
+          secretRef:
+            name: $secret_name
+            userKey: $user_key
+            passwordKey: $password_key
+          serviceRef:
+            name: $svc_name
+            namespace: $namespace
 EOF
   return 0
 }
@@ -288,10 +316,9 @@ _orchestrator::patch_workflow_postgres() {
   local database_name=${8:-}
   local database_schema=${9:-}
 
-  local service_ref="{\"name\": \"$svc_name\", \"namespace\": \"$svc_namespace\""
-  if [[ -n "$database_name" ]]; then
-    service_ref+=", \"databaseName\": \"$database_name\""
-  fi
+  local db="${database_name:-postgres}"
+
+  local service_ref="{\"name\": \"$svc_name\", \"namespace\": \"$svc_namespace\", \"databaseName\": \"$db\""
   if [[ -n "$database_schema" ]]; then
     service_ref+=", \"databaseSchema\": \"$database_schema\""
   fi
@@ -595,12 +622,12 @@ orchestrator::deploy_workflows_operator() {
     log::info "Using standard secret keys (POSTGRES_USER/POSTGRES_PASSWORD)"
   fi
 
-  _orchestrator::create_sonataflow_platform "$namespace"
+  _orchestrator::create_sonataflow_platform "$namespace" \
+    "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" "$pqsl_svc_name"
 
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  local sonataflow_db="backstage_plugin_orchestrator"
   local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     case "$workflow" in
@@ -617,7 +644,7 @@ orchestrator::deploy_workflows_operator() {
 
     _orchestrator::patch_workflow_postgres "$namespace" "$workflow" \
       "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" \
-      "$pqsl_svc_name" "$namespace" "$sonataflow_db"
+      "$pqsl_svc_name" "$namespace"
   done
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
