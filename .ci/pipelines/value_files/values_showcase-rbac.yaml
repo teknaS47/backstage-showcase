@@ -135,6 +135,9 @@ global:
             github:
               - host: github.com
                 token: "{gh-token}"
+            gitlab:
+              - host: gitlab.com
+                token: "{gitlab-token}"
       - disabled: false
         package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-scorecard-backend-module-jira:bs_1.42.5__1.0.1!red-hat-developer-hub-backstage-plugin-scorecard-backend-module-jira
         pluginConfig:
