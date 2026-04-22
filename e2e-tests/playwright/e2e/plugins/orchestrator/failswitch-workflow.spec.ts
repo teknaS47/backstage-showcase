@@ -183,18 +183,16 @@ async function restartAndWait(ns: string): Promise<void> {
   ];
   await LogUtils.executeCommand("oc", restartArgs);
 
-  console.log("waiting for pods to be ready");
-  const waitArgs = [
+  console.log("waiting for rollout to complete");
+  const rolloutArgs = [
     "-n",
     ns,
-    "wait",
-    "--for=condition=ready",
-    "pod",
-    "-l",
-    "app.kubernetes.io/name=failswitch",
-    "--timeout=5s",
+    "rollout",
+    "status",
+    "deployment/failswitch",
+    "--timeout=120s",
   ];
-  await LogUtils.executeCommandWithRetries("oc", waitArgs, 5);
+  await LogUtils.executeCommandWithRetries("oc", rolloutArgs, 3);
 }
 
 async function cleanupAfterTest(

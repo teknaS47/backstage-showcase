@@ -181,11 +181,76 @@ _orchestrator::apply_manifests() {
   return 0
 }
 
+# Function: _orchestrator::create_sonataflow_database
+# Description: Create a dedicated 'sonataflow' database inside the RHDH
+#   PostgreSQL instance for data-index and jobs-service, mirroring the
+#   Helm path which has its own sonataflow-psql-postgresql instance.
+# Arguments:
+#   $1 - namespace
+#   $2 - psql_pod: the backstage-psql pod name (e.g. backstage-psql-rhdh-0)
+_orchestrator::create_sonataflow_database() {
+  local namespace=$1
+  local psql_pod=$2
+  local secret_name=$3
+  local user_key=$4
+
+  local db_user
+  db_user=$(oc get secret "$secret_name" -n "$namespace" -o jsonpath="{.data.${user_key}}" | base64 -d)
+
+  log::info "Ensuring 'sonataflow' database exists in $psql_pod (user: $db_user)"
+  oc exec -n "$namespace" "$psql_pod" -- \
+    psql -U "$db_user" -d postgres -tc \
+    "SELECT 1 FROM pg_database WHERE datname = 'sonataflow'" \
+    | grep -q 1 \
+    || oc exec -n "$namespace" "$psql_pod" -- \
+      psql -U "$db_user" -d postgres -c "CREATE DATABASE sonataflow"
+}
+
+# Function: _orchestrator::ensure_knative_eventing
+# Description: Ensure KnativeEventing CR exists so that the Knative Eventing
+#   controller runs.  The SonataFlow operator uses SinkBindings/Triggers to
+#   route workflow status events to data-index.  In the Helm path this is
+#   handled by the orchestrator-infra chart; the operator path must create
+#   the CR explicitly.
+_orchestrator::ensure_knative_eventing() {
+  if oc get knativeeventing knative-eventing -n knative-eventing &> /dev/null; then
+    log::info "KnativeEventing already exists"
+    return 0
+  fi
+
+  log::info "Creating KnativeEventing CR"
+  oc create namespace knative-eventing 2> /dev/null || true
+  oc apply -f - << 'EOF'
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeEventing
+metadata:
+  name: knative-eventing
+  namespace: knative-eventing
+EOF
+
+  log::info "Waiting for KnativeEventing to be ready..."
+  local timeout=300
+  local elapsed=0
+  while [[ $elapsed -lt $timeout ]]; do
+    local ready
+    ready=$(oc get knativeeventing knative-eventing -n knative-eventing \
+      -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2> /dev/null || echo "")
+    if [[ "$ready" == "True" ]]; then
+      log::success "KnativeEventing is ready"
+      return 0
+    fi
+    sleep 10
+    elapsed=$((elapsed + 10))
+  done
+
+  log::warn "KnativeEventing not ready after ${timeout}s, continuing anyway"
+  return 0
+}
+
 # Function: _orchestrator::create_sonataflow_platform
 # Description: Create a SonataFlowPlatform CR so the operator deploys
-#   data-index-service and jobs-service with PostgreSQL persistence.
-#   Without persistence, data-index uses in-memory H2 and cannot track
-#   workflow executions (it only sees definitions from the CRD).
+#   data-index-service and jobs-service with PostgreSQL persistence
+#   against the dedicated 'sonataflow' database.
 # Arguments:
 #   $1 - namespace: Kubernetes namespace
 #   $2 - secret_name: PostgreSQL secret name
@@ -199,7 +264,7 @@ _orchestrator::create_sonataflow_platform() {
   local password_key=$4
   local svc_name=$5
 
-  log::info "Creating SonataFlowPlatform CR in namespace $namespace (persistence: $svc_name)"
+  log::info "Creating SonataFlowPlatform CR in namespace $namespace (persistence: $svc_name/sonataflow)"
   oc apply -n "$namespace" -f - << EOF
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlowPlatform
@@ -218,6 +283,8 @@ spec:
           serviceRef:
             name: $svc_name
             namespace: $namespace
+            port: 5432
+            databaseName: sonataflow
     jobService:
       enabled: true
       persistence:
@@ -229,6 +296,8 @@ spec:
           serviceRef:
             name: $svc_name
             namespace: $namespace
+            port: 5432
+            databaseName: sonataflow
 EOF
   return 0
 }
@@ -595,9 +664,10 @@ orchestrator::deploy_workflows_operator() {
 
   k8s_wait::deployment "$namespace" backstage-psql 15
 
-  local pqsl_secret_name pqsl_svc_name
+  local pqsl_secret_name pqsl_svc_name pqsl_pod
   pqsl_secret_name=$(oc get secrets -n "$namespace" -o name | grep "backstage-psql" | grep "secret" | head -1 | sed 's/secret\///')
   pqsl_svc_name=$(oc get svc -n "$namespace" -o name | grep "backstage-psql" | grep -v "secret" | head -1 | sed 's/service\///')
+  pqsl_pod=$(oc get pods -n "$namespace" -o name 2> /dev/null | grep "backstage-psql" | head -1 | sed 's/pod\///')
 
   if [[ -z "$pqsl_secret_name" ]]; then
     log::error "No PostgreSQL secret found matching pattern 'backstage-psql.*secret' in namespace '$namespace'"
@@ -622,12 +692,24 @@ orchestrator::deploy_workflows_operator() {
     log::info "Using standard secret keys (POSTGRES_USER/POSTGRES_PASSWORD)"
   fi
 
+  # Create a dedicated database for data-index / jobs-service, mirroring
+  # the Helm path which has its own sonataflow-psql-postgresql instance.
+  if [[ -n "$pqsl_pod" ]]; then
+    _orchestrator::create_sonataflow_database "$namespace" "$pqsl_pod" "$pqsl_secret_name" "$pqsl_user_key"
+  else
+    log::warn "Could not find backstage-psql pod; skipping sonataflow DB creation"
+  fi
+
   _orchestrator::create_sonataflow_platform "$namespace" \
     "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" "$pqsl_svc_name"
 
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
+  # Strip upstream persistence (points to sonataflow-psql-postgresql which
+  # does not exist in the operator path) to avoid a broken first reconciliation.
+  # We then apply the clean manifests and immediately patch with the correct
+  # persistence pointing at the RHDH PostgreSQL.
   local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     case "$workflow" in
@@ -640,6 +722,11 @@ orchestrator::deploy_workflows_operator() {
     esac
 
     log::info "Deploying workflow '$workflow'..."
+    local sf_file
+    sf_file=$(find "${workflow_manifests}" -name '*sonataflow*' -type f | head -1)
+    if [[ -n "$sf_file" ]]; then
+      yq eval -i 'del(.spec.persistence) | del(.status)' "$sf_file"
+    fi
     oc apply -f "${workflow_manifests}" -n "$namespace"
 
     _orchestrator::patch_workflow_postgres "$namespace" "$workflow" \
@@ -648,6 +735,59 @@ orchestrator::deploy_workflows_operator() {
   done
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
+
+  # Diagnostics: understand why data-index may not track workflow status
+  log::info "SonataFlow CR status:"
+  oc get sonataflow -n "$namespace" -o wide 2> /dev/null || true
+
+  log::info "Managed-props ConfigMaps (operator-injected data-index URL):"
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    local cm="${wf}-managed-props"
+    if oc get cm "$cm" -n "$namespace" &> /dev/null; then
+      log::info "  $cm exists:"
+      oc get cm "$cm" -n "$namespace" -o jsonpath='{.data}' 2> /dev/null | head -c 2000
+      echo ""
+    else
+      log::warn "  $cm NOT FOUND - operator did not inject data-index properties"
+    fi
+  done
+
+  log::info "Services in namespace:"
+  oc get svc -n "$namespace" 2> /dev/null || true
+
+  log::info "Data-index process definitions (GraphQL):"
+  oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+    curl -sf "http://localhost:8080/graphql" \
+    -H 'content-type: application/json' \
+    -d '{"query":"{ ProcessDefinitions { id, version, endpoint } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
+
+  # Verify each workflow is reachable from inside the cluster before
+  # restarting Backstage.  The orchestrator plugin health-checks every
+  # workflow endpoint; if any is unreachable Backstage returns 503.
+  log::info "Verifying workflow endpoints are reachable from data-index pod..."
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    local wf_url="http://${wf}.${namespace}:80"
+    local attempts=0
+    local max_attempts=18
+    while [[ $attempts -lt $max_attempts ]]; do
+      if oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+        curl -sf --max-time 5 -o /dev/null "${wf_url}" 2> /dev/null; then
+        log::info "  $wf reachable at $wf_url"
+        break
+      fi
+      attempts=$((attempts + 1))
+      if [[ $attempts -eq $max_attempts ]]; then
+        log::warn "  $wf NOT reachable at $wf_url after ${max_attempts} attempts"
+        log::warn "  Service details:"
+        oc get svc "$wf" -n "$namespace" -o yaml 2> /dev/null || log::warn "    service/$wf does not exist"
+        log::warn "  Pod status:"
+        oc get pods -n "$namespace" -l "app=$wf" -o wide 2> /dev/null || true
+        log::warn "  Endpoints:"
+        oc get endpoints "$wf" -n "$namespace" 2> /dev/null || log::warn "    no endpoints for $wf"
+      fi
+      sleep 10
+    done
+  done
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
