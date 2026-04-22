@@ -900,7 +900,7 @@ export class UIhelper {
     const quickstartHideButton = this.page.getByRole("button", {
       name: "Hide",
     });
-    
+
     const progressBars = this.page.getByTestId("progress");
     await expect(progressBars).toHaveCount(0);
 

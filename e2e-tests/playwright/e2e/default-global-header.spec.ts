@@ -33,11 +33,7 @@ test.describe("Default Global Header", () => {
   test("Verify that global header and default header components are visible", async ({
     page,
   }) => {
-    await expect(
-      page.getByPlaceholder(
-        "Search...",
-      ),
-    ).toBeVisible();
+    await expect(page.getByPlaceholder("Search...")).toBeVisible();
     await uiHelper.verifyLink({
       label: "Self-service",
     });
@@ -94,10 +90,7 @@ test.describe("Default Global Header", () => {
     await helpDropdownButton.click();
     await page.waitForTimeout(500);
 
-    await uiHelper.verifyTextVisible(
-      "Support",
-      true,
-    );
+    await uiHelper.verifyTextVisible("Support", true);
 
     const [newTab] = await Promise.all([
       context.waitForEvent("page"),
@@ -119,9 +112,7 @@ test.describe("Default Global Header", () => {
       // "Settings",
       "Settings",
     );
-    await uiHelper.verifyTextVisible(
-      "Sign out",
-    );
+    await uiHelper.verifyTextVisible("Sign out");
 
     await page
       .getByRole("menuitem", {
@@ -145,17 +136,12 @@ test.describe("Default Global Header", () => {
 
     await uiHelper.openProfileDropdown();
     // Scope sign-out search to the profile menu (role=menu)
-    await page
-      .getByRole("menu")
-      .getByText("Sign out")
-      .click();
+    await page.getByRole("menu").getByText("Sign out").click();
     await uiHelper.verifyHeading(t["rhdh"][lang]["signIn.page.title"]);
   });
 
   test("Verify Search bar behaves as expected", async ({ page }) => {
-    const searchBar = page.getByPlaceholder(
-      "Search...",
-    );
+    const searchBar = page.getByPlaceholder("Search...");
     await searchBar.click();
     await searchBar.fill("test query term");
     expect(await uiHelper.isBtnVisibleByTitle("Clear")).toBeTruthy();

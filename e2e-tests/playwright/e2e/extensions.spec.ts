@@ -47,9 +47,7 @@ test.describe("Admin > Extensions", () => {
       t["rhdh"][lang]["menuItem.administration"],
     );
     await uiHelper.openSidebar("Extensions");
-    await uiHelper.verifyHeading(
-      "Extensions",
-    );
+    await uiHelper.verifyHeading("Extensions");
   });
 
   test.describe("Extensions > Catalog", () => {
@@ -66,30 +64,20 @@ test.describe("Admin > Extensions", () => {
     test("Verify category and author filters in extensions", async ({
       page,
     }, testInfo) => {
-      await uiHelper.verifyHeading(
-        new RegExp(
-          `^${"Plugins"} \\(\\d+\\)$`,
-        ),
-      );
+      await uiHelper.verifyHeading(new RegExp(`^${"Plugins"} \\(\\d+\\)$`));
 
       await runAccessibilityTests(page, testInfo);
 
       await uiHelper.clickTab("Catalog");
-      await extensions.selectDropdown(
-        "Category",
-      );
+      await extensions.selectDropdown("Category");
       await extensions.toggleOption("CI/CD");
       await page.getByRole("option", { name: "CI/CD" }).isChecked();
       await page.keyboard.press(`Escape`);
-      await extensions.selectDropdown(
-        "Author",
-      );
+      await extensions.selectDropdown("Author");
       await extensions.toggleOption("Red Hat");
       await page.keyboard.press(`Escape`);
       await uiHelper.verifyHeading("Argo CD");
-      await uiHelper.verifyText(
-        " by " + "Red Hat",
-      );
+      await uiHelper.verifyText(" by " + "Red Hat");
       await page.getByRole("heading", { name: "Argo CD" }).click();
       await uiHelper.verifyTableHeadingAndRows([
         "Package name",
@@ -98,9 +86,7 @@ test.describe("Admin > Extensions", () => {
         "Backstage compatibility version",
         "Status",
       ]);
-      await uiHelper.verifyHeading(
-        "Versions",
-      );
+      await uiHelper.verifyHeading("Versions");
       await page
         .getByRole("button", {
           name: "close",
@@ -112,9 +98,7 @@ test.describe("Admin > Extensions", () => {
           name: "close",
         })
         .click();
-      await extensions.selectDropdown(
-        "Author",
-      );
+      await extensions.selectDropdown("Author");
       await extensions.toggleOption("Red Hat");
       await expect(
         page.getByRole("option", { name: "Red Hat" }).getByRole("checkbox"),
@@ -122,17 +106,13 @@ test.describe("Admin > Extensions", () => {
       await expect(page.getByRole("button", { name: "Red Hat" })).toBeHidden();
       await page.keyboard.press(`Escape`);
       await expect(
-        page
-          .getByLabel("Category")
-          .getByRole("combobox"),
+        page.getByLabel("Category").getByRole("combobox"),
       ).toBeEmpty();
       await page.keyboard.press(`Escape`);
     });
 
     test("Verify support type filters in extensions", async ({ page }) => {
-      await extensions.selectDropdown(
-        "Support type",
-      );
+      await extensions.selectDropdown("Support type");
       await expect(page.getByRole("listbox")).toBeVisible();
 
       // Verify all support type options are present using filter for partial text matching
@@ -145,38 +125,26 @@ test.describe("Admin > Extensions", () => {
 
       await page.keyboard.press("Escape");
       await expect(
-        page
-          .getByLabel("Category")
-          .getByRole("combobox"),
+        page.getByLabel("Category").getByRole("combobox"),
       ).toBeEmpty();
     });
 
     test("Verify certified badge in extensions", async ({ page }) => {
-      await extensions.selectDropdown(
-        "Support type",
-      );
-      await extensions.toggleOption(
-        "Certified",
-      );
+      await extensions.selectDropdown("Support type");
+      await extensions.toggleOption("Certified");
       await page.keyboard.press(`Escape`);
       await uiHelper.verifyHeading("DynaTrace");
       await expect(
         page
           .getByLabel(
-            "Certified by {{provider}}".replace(
-              "{{provider}}",
-              "Red Hat",
-            ),
+            "Certified by {{provider}}".replace("{{provider}}", "Red Hat"),
           )
           .first(),
       ).toBeVisible();
       await expect(extensions.badge.first()).toBeVisible();
       await extensions.badge.first().hover();
       await uiHelper.verifyTextInTooltip(
-        "Certified by {{provider}}".replace(
-          "{{provider}}",
-          "Red Hat",
-        ),
+        "Certified by {{provider}}".replace("{{provider}}", "Red Hat"),
       );
       await uiHelper.verifyHeading("DynaTrace");
       await page.getByRole("heading", { name: "DynaTrace" }).first().click();
@@ -197,9 +165,7 @@ test.describe("Admin > Extensions", () => {
           .getByText("Certified"),
       ).toBeVisible();
       await uiHelper.verifyText("About");
-      await uiHelper.verifyHeading(
-        "Versions",
-      );
+      await uiHelper.verifyHeading("Versions");
       await uiHelper.verifyTableHeadingAndRows([
         "Package name",
         "Version",
@@ -212,18 +178,12 @@ test.describe("Admin > Extensions", () => {
           name: "close",
         })
         .click();
-      await extensions.selectDropdown(
-        "Support type",
-      );
-      await extensions.toggleOption(
-        "Certified",
-      );
+      await extensions.selectDropdown("Support type");
+      await extensions.toggleOption("Certified");
     });
 
     test("Verify Generally available badge in extensions", async ({ page }) => {
-      await extensions.selectSupportTypeFilter(
-        "Generally available (GA)",
-      );
+      await extensions.selectSupportTypeFilter("Generally available (GA)");
 
       await expect(
         page
@@ -266,9 +226,7 @@ test.describe("Admin > Extensions", () => {
         })
         .click();
 
-      await extensions.resetSupportTypeFilter(
-        "Generally available (GA)",
-      );
+      await extensions.resetSupportTypeFilter("Generally available (GA)");
     });
 
     test("Verify tech preview badge in extensions", async () => {
@@ -279,41 +237,30 @@ test.describe("Admin > Extensions", () => {
         badgeText: "Tech preview (TP)",
         tooltipText: "",
         searchTerm: "Bulk Import",
-        headings: [
-          "About",
-          "Versions",
-          ...commonHeadings,
-        ],
+        headings: ["About", "Versions", ...commonHeadings],
         includeTable: true,
         includeAbout: false,
       });
     });
 
     test("Verify dev preview badge in extensions", async () => {
-      await extensions.selectSupportTypeFilter(
-        "Dev preview (DP)",
-      );
+      await extensions.selectSupportTypeFilter("Dev preview (DP)");
       await uiHelper.verifyHeading("Developer Lightspeed");
 
       await extensions.verifyPluginDetails({
         pluginName: "Red Hat Developer Lightspeed for Red Hat Developer Hub",
-        badgeLabel:
-          "An early-stage, experimental plugin",
+        badgeLabel: "An early-stage, experimental plugin",
         badgeText: "Dev preview (DP)",
         headings: commonHeadings,
         includeTable: true,
         includeAbout: false,
       });
 
-      await extensions.resetSupportTypeFilter(
-        "Dev preview (DP)",
-      );
+      await extensions.resetSupportTypeFilter("Dev preview (DP)");
     });
 
     test("Verify community plugin badge in extensions", async ({ page }) => {
-      await extensions.selectSupportTypeFilter(
-        "Community plugin",
-      );
+      await extensions.selectSupportTypeFilter("Community plugin");
 
       await extensions.clickReadMoreByPluginTitle(
         "ServiceNow Integration for Red Hat Developer Hub",
@@ -321,9 +268,7 @@ test.describe("Admin > Extensions", () => {
       );
       await expect(
         page
-          .getByLabel(
-            "Open-source plugins, no official support",
-          )
+          .getByLabel("Open-source plugins, no official support")
           .getByText("Community plugin"),
       ).toBeVisible();
 
@@ -332,20 +277,14 @@ test.describe("Admin > Extensions", () => {
         await uiHelper.verifyHeading(heading);
       }
 
-      await expect(
-        page.getByText(
-          "Author" + "Red Hat",
-        ),
-      ).toBeVisible();
+      await expect(page.getByText("Author" + "Red Hat")).toBeVisible();
 
       await page
         .getByRole("button", {
           name: "close",
         })
         .click();
-      await extensions.resetSupportTypeFilter(
-        "Community plugin",
-      );
+      await extensions.resetSupportTypeFilter("Community plugin");
     });
 
     test.use({
@@ -380,9 +319,7 @@ test.describe("Admin > Extensions", () => {
       await uiHelper.clickButton("Apply");
       await uiHelper.verifyText("pluginConfig:");
       await uiHelper.verifyText("dynamicPlugins:");
-      await uiHelper.clickTab(
-        "About the plugin",
-      );
+      await uiHelper.clickTab("About the plugin");
       await uiHelper.verifyHeading("Configuring The Plugin");
       await uiHelper.clickTab("Examples");
       await uiHelper.clickByDataTestId("ContentCopyRoundedIcon");
@@ -435,9 +372,7 @@ test.describe("Admin > Extensions", () => {
     test.beforeEach(async () => {
       await uiHelper.clickByDataTestId("header-tab-1");
       await uiHelper.verifyHeading(
-        new RegExp(
-          `^${"Installed packages"} \\(\\d+\\)$`,
-        ),
+        new RegExp(`^${"Installed packages"} \\(\\d+\\)$`),
       );
     });
 
@@ -478,24 +413,18 @@ test.describe("Admin > Extensions", () => {
       }
       await page
         .getByRole("button", {
-          name: new RegExp(
-            `Rows per page: ${"5 rows"}`,
-          ),
+          name: new RegExp(`Rows per page: ${"5 rows"}`),
         })
         .click();
       await page.getByRole("option", { name: "10", exact: true }).click();
       await page
         .getByRole("button", {
-          name: new RegExp(
-            `Rows per page: ${"10 rows"}`,
-          ),
+          name: new RegExp(`Rows per page: ${"10 rows"}`),
         })
         .scrollIntoViewIfNeeded();
       await expect(
         page.getByRole("button", {
-          name: new RegExp(
-            `Rows per page: ${"10 rows"}`,
-          ),
+          name: new RegExp(`Rows per page: ${"10 rows"}`),
         }),
       ).toBeVisible();
       await expect(
@@ -656,9 +585,7 @@ test.describe("Admin > Extensions", () => {
           name: "Edit package configuration",
         })
         .click();
-      await uiHelper.verifyHeading(
-        "Edit instructions",
-      );
+      await uiHelper.verifyHeading("Edit instructions");
       await expect(page.getByText("SaveCancelReset")).toBeVisible();
       await page
         .getByRole("button", {
@@ -666,9 +593,7 @@ test.describe("Admin > Extensions", () => {
         })
         .click();
       await uiHelper.verifyHeading(
-        new RegExp(
-          `^${"Installed packages"} \\(\\d+\\)$`,
-        ),
+        new RegExp(`^${"Installed packages"} \\(\\d+\\)$`),
         10000,
       );
       await expect(page.getByRole("alert").first()).toContainText(
@@ -697,11 +622,7 @@ test.describe("Admin > Extensions", () => {
         page.getByRole("cell", { name: "Dynamic Home Page" }),
       ).toBeVisible();
       await page.getByRole("checkbox").hover();
-      await expect(
-        page.getByLabel(
-          "Disable package",
-        ),
-      ).toBeVisible();
+      await expect(page.getByLabel("Disable package")).toBeVisible();
       await page.getByRole("checkbox").click();
       await expect(page.getByRole("alert").first()).toContainText(
         "The red-hat-developer-hub-backstage-plugin-dynamic-home-page package requires a restart of the backend system to finish installing, updating, enabling or disabling.",
@@ -716,11 +637,7 @@ test.describe("Admin > Extensions", () => {
         page.getByRole("cell", { name: "Global Header" }),
       ).toBeVisible();
       await page.getByRole("checkbox").hover();
-      await expect(
-        page.getByLabel(
-          "Disable package",
-        ),
-      ).toBeVisible();
+      await expect(page.getByLabel("Disable package")).toBeVisible();
       await page.getByRole("checkbox").click();
 
       await page
@@ -730,12 +647,8 @@ test.describe("Admin > Extensions", () => {
         .click();
       await expect(
         page
-          .getByLabel(
-            "Backend restart required",
-          )
-          .getByText(
-            "Backend restart required",
-          ),
+          .getByLabel("Backend restart required")
+          .getByText("Backend restart required"),
       ).toBeVisible({ timeout: 10000 });
 
       const packageVerifications = [

@@ -37,16 +37,9 @@ export class Extensions {
       })
       .click();
     await expect(
-      this.page.getByText(
-        pluginTitle +
-          " " +
-          " by " +
-          " Red Hat" +
-          badgeText,
-        {
-          exact: true,
-        },
-      ),
+      this.page.getByText(pluginTitle + " " + " by " + " Red Hat" + badgeText, {
+        exact: true,
+      }),
     ).toBeVisible();
   }
 
@@ -69,17 +62,13 @@ export class Extensions {
   }
 
   async selectSupportTypeFilter(supportType: string) {
-    await this.selectDropdown(
-      "Support type",
-    );
+    await this.selectDropdown("Support type");
     await this.toggleOption(supportType);
     await this.page.keyboard.press("Escape");
   }
 
   async resetSupportTypeFilter(supportType: string) {
-    await this.selectDropdown(
-      "Support type",
-    );
+    await this.selectDropdown("Support type");
     await this.toggleOption(supportType);
     await this.page.keyboard.press("Escape");
   }
@@ -97,21 +86,16 @@ export class Extensions {
         exact: true,
       })
       .or(
-        this.page.getByPlaceholder(
-          "Search",
-          {
-            exact: true,
-          },
-        ),
+        this.page.getByPlaceholder("Search", {
+          exact: true,
+        }),
       );
 
     await searchInput.fill(searchText);
   }
 
   async waitForSearchResults(searchText: string) {
-    await this.uiHelper.verifyHeading(
-      "Plugins" + " (1)",
-    );
+    await this.uiHelper.verifyHeading("Plugins" + " (1)");
     await expect(
       this.page.locator(".v5-MuiPaper-outlined").first(),
     ).toContainText(searchText, {
@@ -140,9 +124,7 @@ export class Extensions {
     ).toBeVisible();
 
     if (includeAbout) {
-      await this.uiHelper.verifyText(
-        "About",
-      );
+      await this.uiHelper.verifyText("About");
     }
 
     await this.verifyMultipleHeadings(headings);
