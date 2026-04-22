@@ -35,7 +35,7 @@ test.describe("Default Global Header", () => {
   }) => {
     await expect(
       page.getByPlaceholder(
-        t["plugin.global-header"][lang]["search.placeholder"],
+        "Search...",
       ),
     ).toBeVisible();
     await uiHelper.verifyLink({
@@ -45,7 +45,7 @@ test.describe("Default Global Header", () => {
     const globalHeader = page.getByRole("navigation").first();
     const helpDropdownButton = globalHeader
       .getByRole("button", {
-        name: t["plugin.global-header"][lang]["help.tooltip"],
+        name: "Help",
       })
       .or(
         globalHeader.getByRole("button").filter({
@@ -56,7 +56,7 @@ test.describe("Default Global Header", () => {
 
     await expect(helpDropdownButton).toBeVisible();
     await uiHelper.verifyLink({
-      label: t["plugin.global-header"][lang]["notifications.title"],
+      label: "Notifications",
     });
     expect(await uiHelper.isBtnVisible("rhdh-qe-2")).toBeTruthy();
   });
@@ -82,7 +82,7 @@ test.describe("Default Global Header", () => {
 
     const helpDropdownButton = globalHeader
       .getByRole("button", {
-        name: t["plugin.global-header"][lang]["help.tooltip"],
+        name: "Help",
       })
       .or(
         globalHeader.getByRole("button").filter({
@@ -95,7 +95,7 @@ test.describe("Default Global Header", () => {
     await page.waitForTimeout(500);
 
     await uiHelper.verifyTextVisible(
-      t["plugin.global-header"][lang]["help.supportTitle"],
+      "Support",
       true,
     );
 
@@ -116,17 +116,17 @@ test.describe("Default Global Header", () => {
     await uiHelper.openProfileDropdown();
     await uiHelper.verifyLinkVisible(
       // TODO: RHDHBUGS-2552 - Strings not getting translated
-      // t["plugin.global-header"][lang]["profile.settings"],
+      // "Settings",
       "Settings",
     );
     await uiHelper.verifyTextVisible(
-      t["plugin.global-header"][lang]["profile.signOut"],
+      "Sign out",
     );
 
     await page
       .getByRole("menuitem", {
         // TODO: RHDHBUGS-2552 - Strings not getting translated
-        // t["plugin.global-header"][lang]["profile.settings"],
+        // "Settings",
         name: "Settings",
       })
       .click();
@@ -147,14 +147,14 @@ test.describe("Default Global Header", () => {
     // Scope sign-out search to the profile menu (role=menu)
     await page
       .getByRole("menu")
-      .getByText(t["plugin.global-header"][lang]["profile.signOut"])
+      .getByText("Sign out")
       .click();
     await uiHelper.verifyHeading(t["rhdh"][lang]["signIn.page.title"]);
   });
 
   test("Verify Search bar behaves as expected", async ({ page }) => {
     const searchBar = page.getByPlaceholder(
-      t["plugin.global-header"][lang]["search.placeholder"],
+      "Search...",
     );
     await searchBar.click();
     await searchBar.fill("test query term");
@@ -177,15 +177,15 @@ test.describe("Default Global Header", () => {
       .getByRole("navigation")
       .first()
       .getByRole("link", {
-        name: t["plugin.global-header"][lang]["notifications.title"],
+        name: "Notifications",
       });
 
     await uiHelper.clickLink({
-      ariaLabel: t["plugin.global-header"][lang]["notifications.title"],
+      ariaLabel: "Notifications",
     });
     await uiHelper.verifyHeading(
       // TODO: RHDHBUGS-2585 - String not getting translated
-      // t["plugin.global-header"][lang]["notifications.title"],
+      // "Notifications",
       "Notifications",
     );
     await uiHelper.markAllNotificationsAsReadIfVisible();

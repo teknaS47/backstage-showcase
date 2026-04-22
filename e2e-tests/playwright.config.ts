@@ -264,8 +264,6 @@ export default defineConfig({
         locale: "de",
       },
       testMatch: [
-        "**/playwright/e2e/extensions.spec.ts",
-        "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
         "**/playwright/e2e/custom-theme.spec.ts",
         "**/playwright/e2e/plugins/frontend/sidebar.spec.ts",
@@ -278,8 +276,6 @@ export default defineConfig({
         locale: "es",
       },
       testMatch: [
-        "**/playwright/e2e/extensions.spec.ts",
-        "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
         "**/playwright/e2e/custom-theme.spec.ts",
         "**/playwright/e2e/plugins/frontend/sidebar.spec.ts",
@@ -292,8 +288,6 @@ export default defineConfig({
         locale: "fr",
       },
       testMatch: [
-        "**/playwright/e2e/extensions.spec.ts",
-        "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
         "**/playwright/e2e/custom-theme.spec.ts",
         "**/playwright/e2e/plugins/frontend/sidebar.spec.ts",
@@ -306,8 +300,6 @@ export default defineConfig({
         locale: "it",
       },
       testMatch: [
-        "**/playwright/e2e/extensions.spec.ts",
-        "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
         // TODO: RHDHBUGS-2592 - Custom theme spec is not working
         // "**/playwright/e2e/custom-theme.spec.ts",
@@ -321,8 +313,6 @@ export default defineConfig({
         locale: "ja",
       },
       testMatch: [
-        "**/playwright/e2e/extensions.spec.ts",
-        "**/playwright/e2e/default-global-header.spec.ts",
         "**/playwright/e2e/catalog-timestamp.spec.ts",
         "**/playwright/e2e/custom-theme.spec.ts",
         "**/playwright/e2e/plugins/frontend/sidebar.spec.ts",
