@@ -366,7 +366,7 @@ export class UIhelper {
   async openCatalogSidebar(kind: string) {
     await this.openSidebar(t["rhdh"][lang]["menuItem.catalog"]);
     await this.selectMuiBox(
-      `${t["catalog-react"][lang]["entityKindPicker.title"]}`,
+      `${t["rhdh"][lang]["app.search.filters.kind"]}`,
       kind,
     );
     await expect(async () => {

@@ -48,8 +48,8 @@ export const HOME_PAGE_COMPONENTS = {
  */
 export const SEARCH_OBJECTS_COMPONENTS = {
   // Legacy selectors - maintained for backward compatibility
-  ariaLabelSearch: `input[aria-label="${t["search-react"][lang]["searchBar.title"]}"]`,
-  placeholderSearch: `input[placeholder="${t["search-react"][lang]["searchBar.title"]}"]`,
+  ariaLabelSearch: `input[aria-label="${t["rhdh"][lang]["app.search.title"]}"]`,
+  placeholderSearch: `input[placeholder="${t["rhdh"][lang]["app.search.title"]}"]`,
 
   // Semantic methods - preferred
   /**
@@ -58,7 +58,7 @@ export const SEARCH_OBJECTS_COMPONENTS = {
    * @example SEARCH_OBJECTS_COMPONENTS.getSearchInput(page).fill('test')
    */
   getSearchInput: (page: Page): Locator => {
-    const searchTitle = t["search-react"][lang]["searchBar.title"];
+    const searchTitle = t["rhdh"][lang]["app.search.title"];
     return page.getByLabel(searchTitle).or(page.getByPlaceholder(searchTitle));
   },
 };
