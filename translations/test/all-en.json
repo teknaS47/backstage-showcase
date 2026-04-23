@@ -37,11 +37,6 @@
       "templateListPage.contentHeader.registerExistingButtonTitle": "Import an existing Git repository"
     }
   },
-  "catalog-react": {
-    "en": {
-      "entityKindPicker.title": "Kind"
-    }
-  },
   "catalog-import": {
     "en": {
       "stepInitAnalyzeUrl.nextButtonText": "Analyze",
@@ -49,6 +44,16 @@
       "stepReviewLocation.import": "Import",
       "stepFinishImportLocation.backButtonText": "Register another",
       "stepFinishImportLocation.locations.viewButtonText": "View Component"
+    }
+  },
+  "catalog-react": {
+    "en": {
+      "entityKindPicker.title": "Kind"
+    }
+  },
+  "search-react": {
+    "en": {
+      "searchBar.title": "Search"
     }
   },
   "rhdh": {
@@ -66,7 +71,6 @@
       "signIn.providers.microsoft.message": "Sign in using Microsoft",
       "signIn.providers.oidc.message": "Sign in using OIDC",
       "app.search.title": "Search",
-      "app.search.filters.kind": "Kind",
       "catalog.entityPage.overview.title": "Overview"
     }
   }
