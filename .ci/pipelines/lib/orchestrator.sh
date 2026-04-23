@@ -271,12 +271,6 @@ kind: SonataFlowPlatform
 metadata:
   name: sonataflow-platform
 spec:
-  eventing:
-    broker:
-      ref:
-        apiVersion: eventing.knative.dev/v1
-        kind: Broker
-        name: ""
   services:
     dataIndex:
       enabled: true
@@ -742,30 +736,63 @@ orchestrator::deploy_workflows_operator() {
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
 
-  # Diagnostics: understand why data-index may not track workflow status
-  log::info "SonataFlow CR status:"
-  oc get sonataflow -n "$namespace" -o wide 2> /dev/null || true
+  # ── Diagnostics: capture full state for debugging orchestrator failures ──
 
-  log::info "Managed-props ConfigMaps (operator-injected data-index URL):"
+  log::info "SonataFlow CR status (includes .status.address endpoint):"
+  oc get sonataflow -n "$namespace" -o wide 2> /dev/null || true
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    log::info "  $wf status.address:"
+    oc get sonataflow "$wf" -n "$namespace" \
+      -o jsonpath='{.status.address.url}' 2> /dev/null || true
+    echo ""
+    log::info "  $wf status.services:"
+    oc get sonataflow "$wf" -n "$namespace" \
+      -o jsonpath='{.status.services}' 2> /dev/null || true
+    echo ""
+  done
+
+  log::info "Managed-props ConfigMaps (operator-injected properties):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
     local cm="${wf}-managed-props"
     if oc get cm "$cm" -n "$namespace" &> /dev/null; then
-      log::info "  $cm exists:"
-      oc get cm "$cm" -n "$namespace" -o jsonpath='{.data}' 2> /dev/null | head -c 2000
+      log::info "  $cm:"
+      oc get cm "$cm" -n "$namespace" -o jsonpath='{.data}' 2> /dev/null | head -c 3000
       echo ""
     else
       log::warn "  $cm NOT FOUND - operator did not inject data-index properties"
     fi
   done
 
-  log::info "Services in namespace:"
+  log::info "Workflow Services (port mapping):"
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    oc get svc "$wf" -n "$namespace" -o jsonpath='{.metadata.name}: ports={.spec.ports[*]}  selector={.spec.selector}' 2> /dev/null || log::warn "  svc/$wf not found"
+    echo ""
+    oc get endpoints "$wf" -n "$namespace" 2> /dev/null || true
+  done
+
+  log::info "All Services in namespace:"
   oc get svc -n "$namespace" 2> /dev/null || true
 
-  log::info "Data-index process definitions (GraphQL):"
+  log::info "Data-index process definitions (GraphQL, includes serviceUrl):"
   oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
     curl -sf "http://localhost:8080/graphql" \
     -H 'content-type: application/json' \
-    -d '{"query":"{ ProcessDefinitions { id, version, endpoint } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
+    -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
+  echo ""
+
+  log::info "Testing management endpoint (used by orchestrator plugin ping):"
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    log::info "  curl -sv http://${wf}/management/processes/${wf}:"
+    oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+      curl -sv "http://${wf}/management/processes/${wf}" 2>&1 | head -40 || true
+    echo ""
+    log::info "  curl -sv http://${wf}/${wf} (execution endpoint, HEAD):"
+    oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+      curl -sv --head "http://${wf}/${wf}" 2>&1 | head -20 || true
+    echo ""
+  done
+
+  # ── Restart Backstage so it picks up all deployed workflows ──
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
@@ -775,6 +802,14 @@ orchestrator::deploy_workflows_operator() {
   log::info "Restarting $backstage_deployment now that all workflows are healthy..."
   oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
   k8s_wait::deployment "$namespace" "$backstage_deployment" 15
+
+  # Give the orchestrator plugin time to run its first cache task (polls every 5s)
+  sleep 15
+
+  log::info "Backstage backend logs (orchestrator-related, last 200 lines):"
+  oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend --tail=200 2> /dev/null \
+    | grep -iE "orchestrator|sonataflow|data-index|workflow|dataIndex|cache|Failed|Error|ECONNREFUSED|ENOTFOUND|timeout|ping|management|unavailable|available" || log::info "  (no orchestrator-related log lines found)"
+
   return 0
 }
 
