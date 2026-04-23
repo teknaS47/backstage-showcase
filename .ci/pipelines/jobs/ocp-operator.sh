@@ -105,7 +105,7 @@ handle_ocp_operator() {
 
   cluster_setup_ocp_operator
 
-  prepare_operator
+  prepare_operator "3"
 
   # Use OSD-GCP specific deployment for osd-gcp jobs (orchestrator disabled)
   if [[ "${JOB_NAME}" =~ osd-gcp ]]; then

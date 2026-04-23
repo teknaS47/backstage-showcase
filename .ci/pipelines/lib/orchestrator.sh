@@ -736,75 +736,36 @@ orchestrator::deploy_workflows_operator() {
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
 
-  # ── Diagnostics: capture full state for debugging orchestrator failures ──
+  # ── Diagnostics (compact) ──
 
-  log::info "SonataFlow CR status (includes .status.address endpoint):"
-  oc get sonataflow -n "$namespace" -o wide 2> /dev/null || true
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    log::info "  $wf status.address:"
-    oc get sonataflow "$wf" -n "$namespace" \
-      -o jsonpath='{.status.address.url}' 2> /dev/null || true
-    echo ""
-    log::info "  $wf status.services:"
-    oc get sonataflow "$wf" -n "$namespace" \
-      -o jsonpath='{.status.services}' 2> /dev/null || true
-    echo ""
-  done
-
-  log::info "Managed-props ConfigMaps (operator-injected properties):"
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    local cm="${wf}-managed-props"
-    if oc get cm "$cm" -n "$namespace" &> /dev/null; then
-      log::info "  $cm:"
-      oc get cm "$cm" -n "$namespace" -o jsonpath='{.data}' 2> /dev/null | head -c 3000
-      echo ""
-    else
-      log::warn "  $cm NOT FOUND - operator did not inject data-index properties"
-    fi
-  done
-
-  log::info "Workflow Services (port mapping):"
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    oc get svc "$wf" -n "$namespace" -o jsonpath='{.metadata.name}: ports={.spec.ports[*]}  selector={.spec.selector}' 2> /dev/null || log::warn "  svc/$wf not found"
-    echo ""
-    oc get endpoints "$wf" -n "$namespace" 2> /dev/null || true
-  done
-
-  log::info "All Services in namespace:"
-  oc get svc -n "$namespace" 2> /dev/null || true
-
-  log::info "Data-index process definitions (GraphQL, includes serviceUrl):"
+  log::info "Data-index process definitions (GraphQL):"
   oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
     curl -sf "http://localhost:8080/graphql" \
     -H 'content-type: application/json' \
     -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
   echo ""
 
-  log::info "Testing management endpoint (used by orchestrator plugin ping):"
+  log::info "Management endpoint check (processes registered per workflow pod):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
-    log::info "  curl -sv http://${wf}/management/processes/${wf}:"
     oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
-      curl -sv "http://${wf}/management/processes/${wf}" 2>&1 | head -40 || true
-    echo ""
-    log::info "  curl -sv http://${wf}/${wf} (execution endpoint, HEAD):"
-    oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
-      curl -sv --head "http://${wf}/${wf}" 2>&1 | head -20 || true
+      curl -sf "http://${wf}/management/processes" 2>&1 | head -60 || log::warn "  GET /management/processes on $wf failed"
     echo ""
   done
 
-  # ── Restart Backstage so it picks up all deployed workflows ──
+  # ── Wait for the orchestrator plugin cache to discover the new workflows ──
+  # Backstage was already restarted (with orchestrator plugins loaded) by
+  # enable_plugins_operator.  The WorkflowCacheService polls data-index every
+  # 5 s, so after a short wait the workflows should appear in the UI.
+  # No second restart is needed – it only causes ephemeral-PVC contention and
+  # readiness-probe failures in RBAC namespaces (RHDHBUGS-2184).
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
     backstage_deployment="backstage-rhdh-rbac"
   fi
 
-  log::info "Restarting $backstage_deployment now that all workflows are healthy..."
-  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
-  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
-
-  # Give the orchestrator plugin time to run its first cache task (polls every 5s)
-  sleep 15
+  log::info "Waiting 30 s for orchestrator plugin cache to discover workflows..."
+  sleep 30
 
   log::info "Backstage backend logs (orchestrator-related, last 200 lines):"
   oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend --tail=200 2> /dev/null \
@@ -934,7 +895,19 @@ orchestrator::enable_plugins_operator() {
 
   log::info "Merged dynamic plugins configmap updated"
 
-  # deploy_workflows_operator restarts Backstage after SonataFlow services are up
+  # Restart Backstage so the init container re-reads the patched ConfigMap and
+  # loads the orchestrator plugins.  At this point SonataFlow services do not
+  # exist yet, but the orchestrator plugin handles that gracefully and will
+  # discover workflows once they are deployed (it polls data-index every 5 s).
+  local backstage_deployment="backstage-rhdh"
+  if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
+    backstage_deployment="backstage-rhdh-rbac"
+  fi
+
+  log::info "Restarting $backstage_deployment to load orchestrator plugins..."
+  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
+  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
+
   log::success "Orchestrator plugins enabled successfully"
   return 0
 }
