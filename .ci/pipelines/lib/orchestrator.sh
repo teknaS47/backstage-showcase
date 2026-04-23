@@ -271,6 +271,12 @@ kind: SonataFlowPlatform
 metadata:
   name: sonataflow-platform
 spec:
+  eventing:
+    broker:
+      ref:
+        apiVersion: eventing.knative.dev/v1
+        kind: Broker
+        name: ""
   services:
     dataIndex:
       enabled: true
@@ -760,34 +766,6 @@ orchestrator::deploy_workflows_operator() {
     curl -sf "http://localhost:8080/graphql" \
     -H 'content-type: application/json' \
     -d '{"query":"{ ProcessDefinitions { id, version, endpoint } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
-
-  # Verify each workflow is reachable from inside the cluster before
-  # restarting Backstage.  The orchestrator plugin health-checks every
-  # workflow endpoint; if any is unreachable Backstage returns 503.
-  log::info "Verifying workflow endpoints are reachable from data-index pod..."
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    local wf_url="http://${wf}.${namespace}:80"
-    local attempts=0
-    local max_attempts=18
-    while [[ $attempts -lt $max_attempts ]]; do
-      if oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
-        curl -sf --max-time 5 -o /dev/null "${wf_url}" 2> /dev/null; then
-        log::info "  $wf reachable at $wf_url"
-        break
-      fi
-      attempts=$((attempts + 1))
-      if [[ $attempts -eq $max_attempts ]]; then
-        log::warn "  $wf NOT reachable at $wf_url after ${max_attempts} attempts"
-        log::warn "  Service details:"
-        oc get svc "$wf" -n "$namespace" -o yaml 2> /dev/null || log::warn "    service/$wf does not exist"
-        log::warn "  Pod status:"
-        oc get pods -n "$namespace" -l "app=$wf" -o wide 2> /dev/null || true
-        log::warn "  Endpoints:"
-        oc get endpoints "$wf" -n "$namespace" 2> /dev/null || log::warn "    no endpoints for $wf"
-      fi
-      sleep 10
-    done
-  done
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
