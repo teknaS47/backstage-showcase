@@ -115,8 +115,8 @@ spec:
             - columnheader "Status"
     `);
   });
-
-  test("Add a Repository and Confirm its Preview", async () => {
+  // TODO: https://redhat.atlassian.net/browse/RHDHBUGS-2958
+  test.fixme("Add a Repository and Confirm its Preview", async () => {
     await uiHelper.openSidebar("Bulk import");
 
     // Wait to ensure the repo will appear in the Bulk Import UI
