@@ -904,9 +904,33 @@ orchestrator::enable_plugins_operator() {
     backstage_deployment="backstage-rhdh-rbac"
   fi
 
-  log::info "Restarting $backstage_deployment to load orchestrator plugins..."
-  oc rollout restart "deployment/$backstage_deployment" -n "$namespace"
-  k8s_wait::deployment "$namespace" "$backstage_deployment" 15
+  # Delete the existing pod instead of `oc rollout restart`.  A rollout restart
+  # creates a new ReplicaSet while keeping old pods alive (maxUnavailable=0),
+  # doubling resource usage: 6 containers (2x backstage-backend, 2x llama-stack,
+  # 2x lightspeed-core).  On resource-constrained CI clusters this prevents
+  # either pod from finishing initialization within the 15-minute timeout.
+  # Deleting the pod lets the existing ReplicaSet recreate exactly one pod that
+  # re-runs init containers and picks up the patched ConfigMap.
+  log::info "Recycling $backstage_deployment pod to load orchestrator plugins..."
+  oc delete pods -n "$namespace" \
+    -l "rhdh.redhat.com/app=backstage-${backstage_deployment}" \
+    --grace-period=30 2> /dev/null \
+    || oc get pods -n "$namespace" --no-headers 2> /dev/null \
+    | grep "$backstage_deployment" | awk '{print $1}' \
+      | xargs -r oc delete pod -n "$namespace" --grace-period=30 2> /dev/null || true
+  sleep 5
+
+  local bs_rc=0
+  k8s_wait::deployment "$namespace" "$backstage_deployment" 15 || bs_rc=$?
+
+  if [[ "$bs_rc" -ne 0 ]]; then
+    log::error "$backstage_deployment failed readiness after restart"
+    log::info "Backstage plugin initialization logs:"
+    oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend 2> /dev/null \
+      | grep -iE "initializ|Plugin|started|complete|error|fatal|ECONNREFUSED|timeout" \
+      | grep -iv "WorkflowCacheService" | head -60 || log::warn "  Could not retrieve logs"
+    return 1
+  fi
 
   log::success "Orchestrator plugins enabled successfully"
   return 0
