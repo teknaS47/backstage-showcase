@@ -752,20 +752,73 @@ orchestrator::deploy_workflows_operator() {
     echo ""
   done
 
-  # ── Wait for the orchestrator plugin cache to discover the new workflows ──
-  # Backstage was already restarted (with orchestrator plugins loaded) by
-  # enable_plugins_operator.  The WorkflowCacheService polls data-index every
-  # 5 s, so after a short wait the workflows should appear in the UI.
-  # No second restart is needed – it only causes ephemeral-PVC contention and
-  # readiness-probe failures in RBAC namespaces (RHDHBUGS-2184).
+  # ── Wait for Backstage → SonataFlow connectivity to stabilise ──
+  # After workflow CRs are applied the SonataFlow operator reconciles
+  # data-index (updated ConfigMap, Knative resources, etc.) which can
+  # cause a brief pod restart.  A fixed "sleep 30" is not enough because
+  # the restart window is unpredictable.  Instead we poll until the
+  # Backstage pod can actually reach data-index through the K8s Service
+  # (ClusterIP:80 → pod:8080).  This catches DNS, NetworkPolicy, and
+  # pod-restart issues that the previous oc-exec diagnostic missed
+  # because oc-exec bypasses the Service entirely.
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
     backstage_deployment="backstage-rhdh-rbac"
   fi
 
-  log::info "Waiting 30 s for orchestrator plugin cache to discover workflows..."
-  sleep 30
+  # Re-verify data-index is still running after workflow reconciliation
+  k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 5
+
+  local max_conn_attempts=18 # 18 × 10 s = 3 min
+  local conn_ok=false
+
+  log::info "Verifying Backstage → data-index connectivity (via Service)..."
+  # Use Node.js (guaranteed in backstage-backend) instead of curl (may
+  # not be present in minimal UBI images).
+  local node_probe
+  node_probe=$(
+    cat << 'PROBE'
+const http = require("http");
+const data = JSON.stringify({query:"{ ProcessDefinitions { id } }"});
+const req = http.request("http://sonataflow-platform-data-index-service/graphql",
+  {method:"POST", headers:{"content-type":"application/json","content-length":Buffer.byteLength(data)}, timeout:5000},
+  res => process.exit(res.statusCode === 200 ? 0 : 1));
+req.on("error", () => process.exit(1));
+req.on("timeout", () => { req.destroy(); process.exit(1); });
+req.end(data);
+PROBE
+  )
+  for ((attempt = 1; attempt <= max_conn_attempts; attempt++)); do
+    if oc exec -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend -- \
+      node -e "$node_probe" > /dev/null 2>&1; then
+      conn_ok=true
+      log::success "Backstage can reach data-index (attempt $attempt)"
+      break
+    fi
+    log::debug "Attempt $attempt/$max_conn_attempts: data-index not reachable from Backstage, retrying in 10 s..."
+    sleep 10
+  done
+
+  if [[ "$conn_ok" != "true" ]]; then
+    log::error "Backstage pod cannot reach data-index through the Service after $((max_conn_attempts * 10))s"
+    log::info "Diagnostics:"
+    log::info "  data-index Service:"
+    oc get svc -n "$namespace" sonataflow-platform-data-index-service -o wide 2> /dev/null || log::warn "  Service not found"
+    log::info "  data-index Endpoints:"
+    oc get endpoints -n "$namespace" sonataflow-platform-data-index-service 2> /dev/null || log::warn "  Endpoints not found"
+    log::info "  NetworkPolicies in namespace:"
+    oc get networkpolicy -n "$namespace" 2> /dev/null || log::warn "  None"
+    log::info "  data-index pod status:"
+    oc get pods -n "$namespace" -l "sonataflow.org/platform-service-type=data-index" -o wide 2> /dev/null \
+      || oc get pods -n "$namespace" | grep data-index || log::warn "  No data-index pods found"
+    return 1
+  fi
+
+  # Allow the WorkflowCacheService a few more seconds to ingest newly
+  # discovered workflows (it polls every 5 s).
+  log::info "Waiting 15 s for orchestrator plugin cache to discover workflows..."
+  sleep 15
 
   log::info "Backstage backend logs (orchestrator-related, last 200 lines):"
   oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend --tail=200 2> /dev/null \
