@@ -311,12 +311,6 @@ kind: SonataFlowPlatform
 metadata:
   name: sonataflow-platform
 spec:
-  eventing:
-    broker:
-      ref:
-        name: default
-        apiVersion: eventing.knative.dev/v1
-        kind: Broker
   services:
     dataIndex:
       enabled: true
@@ -661,10 +655,6 @@ orchestrator::deploy_workflows() {
     patch_namespace="$namespace"
   fi
 
-  # Deploy each workflow individually: apply manifest, patch with persistence
-  # immediately, then wait for rollout. This avoids a double rollout where the
-  # operator creates a deployment without persistence and old replicas get stuck
-  # in pending termination during the update.
   local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     case "$workflow" in
@@ -738,17 +728,11 @@ orchestrator::deploy_workflows_operator() {
     log::info "Using standard secret keys (POSTGRES_USER/POSTGRES_PASSWORD)"
   fi
 
-  # Create a dedicated database for data-index / jobs-service, mirroring
-  # the Helm path which has its own sonataflow-psql-postgresql instance.
   if [[ -n "$pqsl_pod" ]]; then
     _orchestrator::create_sonataflow_database "$namespace" "$pqsl_pod" "$pqsl_secret_name" "$pqsl_user_key"
   else
     log::warn "Could not find backstage-psql pod; skipping sonataflow DB creation"
   fi
-
-  # Create a Knative Eventing Broker so the SonataFlow Operator can route
-  # workflow status events to data-index via SinkBindings/Triggers.
-  _orchestrator::create_knative_broker "$namespace"
 
   _orchestrator::create_sonataflow_platform "$namespace" \
     "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" "$pqsl_svc_name"
@@ -756,14 +740,6 @@ orchestrator::deploy_workflows_operator() {
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  # Replace upstream persistence (points to sonataflow-psql-postgresql which
-  # does not exist in the operator path) with the correct RHDH PostgreSQL
-  # config BEFORE applying.  This avoids a double-reconciliation where the
-  # operator first deploys the workflow without persistence and then patches
-  # it, which creates duplicate ProcessDefinition entries in data-index with
-  # different casing (e.g. failswitch vs failSwitch) — the lowercase entry's
-  # /management/processes endpoint 404s and causes persistent "Failed to ping
-  # service" errors in the orchestrator plugin (RHDHBUGS-2184).
   local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     case "$workflow" in
@@ -803,17 +779,12 @@ orchestrator::deploy_workflows_operator() {
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
 
-  # ── Verify eventing: SinkBindings route workflow events → data-index ──
-
-  log::info "Knative SinkBindings in namespace $namespace:"
-  oc get sinkbindings -n "$namespace" 2> /dev/null || log::warn "No SinkBindings found — workflow events may not reach data-index"
-
-  log::info "Workflow pod environment (K_SINK / data-index):"
+  log::info "Workflow pod environment (KOGITO_DATA_INDEX_URL / K_SINK):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
     log::info "  $wf:"
     oc exec -n "$namespace" "deployment/$wf" -- env 2> /dev/null \
       | grep -iE "k_sink|kogito.*data.*index" \
-      || log::warn "    (no K_SINK env var found — events will NOT reach data-index)"
+      || log::warn "    (no KOGITO_DATA_INDEX_URL — workflow status may not reach data-index)"
   done
 
   log::info "Data-index process definitions:"
@@ -822,16 +793,6 @@ orchestrator::deploy_workflows_operator() {
     -H 'content-type: application/json' \
     -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
   echo ""
-
-  # ── Restart Backstage NOW that all SonataFlow services exist ──
-  # The orchestrator plugins ConfigMap was patched earlier by
-  # enable_plugins_operator, but the Backstage pod was NOT restarted at
-  # that time.  Deferring the restart to this point is critical: on
-  # OpenShift CI clusters, a Backstage pod that starts before the
-  # SonataFlow Services exist gets a persistent ECONNREFUSED to every
-  # SonataFlow ClusterIP — even after the Services become Ready.
-  # Restarting Backstage after the Services are live ensures the new
-  # pod's network namespace has working OVN/kube-proxy rules for them.
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
@@ -856,8 +817,7 @@ orchestrator::deploy_workflows_operator() {
     return 1
   fi
 
-  # ── Verify Backstage → data-index connectivity via the K8s Service ──
-  local max_conn_attempts=12 # 12 × 10 s = 2 min
+  local max_conn_attempts=12
   local conn_ok=false
 
   log::info "Verifying Backstage → data-index connectivity (via Service)..."
@@ -900,9 +860,6 @@ PROBE
     return 1
   fi
 
-  # ── Verify Backstage → workflow service connectivity ──
-  # The same OVN/kube-proxy issue that affected data-index can affect workflow
-  # Services.  Verify each workflow is reachable from the Backstage pod.
   for wf in $ORCHESTRATOR_WORKFLOWS; do
     local wf_ok=false
     for ((wf_attempt = 1; wf_attempt <= 6; wf_attempt++)); do
@@ -919,32 +876,18 @@ PROBE
     fi
   done
 
-  # The WorkflowCacheService polls data-index every 5 s.  Give it
-  # several cycles to discover the newly available workflows.
   log::info "Waiting 30 s for orchestrator plugin cache to discover workflows..."
   sleep 30
 
-  # ── Smoke test: execute via Backstage orchestrator API ──
-  log::info "Smoke test: executing greeting workflow via Backstage orchestrator API..."
-  local api_result
-  api_result=$(oc exec -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend -- \
-    node -e '
-const http = require("http");
-const body = JSON.stringify({inputData:{language:"English"}});
-const req = http.request("http://localhost:7007/api/orchestrator/v2/workflows/greeting/execute", {
-  method: "POST",
-  headers: {"content-type":"application/json","content-length":Buffer.byteLength(body)},
-  timeout: 15000
-}, res => {
-  let data = "";
-  res.on("data", c => data += c);
-  res.on("end", () => console.log("HTTP " + res.statusCode + ": " + data.substring(0, 500)));
-});
-req.on("error", e => console.log("ERROR: " + e.message));
-req.on("timeout", () => { req.destroy(); console.log("TIMEOUT"); });
-req.end(body);
-' 2>&1) || true
-  log::info "Backstage API execution result: $api_result"
+  local route_name
+  route_name=$(oc get routes -n "$namespace" --no-headers -o custom-columns=':metadata.name' 2> /dev/null | head -1)
+  if [[ -n "$route_name" ]]; then
+    oc annotate route "$route_name" -n "$namespace" \
+      haproxy.router.openshift.io/timeout=5m \
+      --overwrite 2> /dev/null \
+      && log::success "Route '$route_name' annotated with 5m HAProxy timeout" \
+      || log::warn "Could not annotate route '$route_name'"
+  fi
 
   log::info "Backstage backend logs (orchestrator-related, last 200 lines):"
   oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend --tail=200 2> /dev/null \
@@ -1036,14 +979,6 @@ orchestrator::enable_plugins_operator() {
     return 0
   fi
 
-  # Merge the plugins arrays: custom plugins override operator defaults
-  # Uses package name as the unique key for deduplication
-  # Only merge plugin entries that have a .package field (required by install-dynamic-plugins.py)
-  # Drop plugins with {{inherit}} in .package UNLESS they carry pluginConfig; the installer
-  # resolves {{inherit}} from the includes file for registry.access.redhat.com packages, but
-  # bare {{inherit}} entries without custom config are redundant with the included defaults.
-  # Keeping entries that have pluginConfig preserves critical settings like dataIndexService URL.
-  # The select(di == 0) filter prevents yq from outputting multiple YAML documents
   log::info "Merging custom and default dynamic plugins..."
   local merged_yaml
   if ! merged_yaml=$(yq eval-all '
@@ -1059,28 +994,18 @@ orchestrator::enable_plugins_operator() {
     return 1
   fi
 
-  # Ensure merged result is valid for install-dynamic-plugins.py (plugins must be a list)
   if ! echo "$merged_yaml" | yq eval '.plugins | type' - 2> /dev/null | grep -q "!!seq"; then
     log::error "Merged dynamic-plugins.yaml has invalid structure: .plugins must be a list. Refusing to patch."
     log::error "Merged YAML (first 500 chars): $(echo "$merged_yaml" | head -c 500)"
     return 1
   fi
 
-  # Patch the operator configmap with merged content
   if ! oc patch cm "$operator_cm" -n "$namespace" --type merge -p "{\"data\":{\"dynamic-plugins.yaml\":$(echo "$merged_yaml" | jq -Rs .)}}"; then
     log::error "Failed to patch operator configmap with merged plugins"
     return 1
   fi
 
   log::info "Merged dynamic plugins configmap updated"
-
-  # Do NOT restart Backstage here.  The restart is deferred to
-  # deploy_workflows_operator so that when the new pod starts all
-  # SonataFlow services (data-index, jobs-service, workflows) already
-  # exist.  Restarting now causes a persistent ECONNREFUSED because
-  # the Backstage pod's OVN/kube-proxy datapath never picks up
-  # Services created after the pod's network namespace was initialised
-  # (observed on OpenShift CI clusters – RHDHBUGS-2184).
 
   log::success "Orchestrator plugins ConfigMap updated (restart deferred to workflow deployment)"
   return 0
