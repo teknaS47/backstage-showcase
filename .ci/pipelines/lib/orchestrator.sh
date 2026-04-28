@@ -706,10 +706,14 @@ orchestrator::deploy_workflows_operator() {
   k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 20
   k8s_wait::deployment "$namespace" sonataflow-platform-jobs-service 20
 
-  # Strip upstream persistence (points to sonataflow-psql-postgresql which
-  # does not exist in the operator path) to avoid a broken first reconciliation.
-  # We then apply the clean manifests and immediately patch with the correct
-  # persistence pointing at the RHDH PostgreSQL.
+  # Replace upstream persistence (points to sonataflow-psql-postgresql which
+  # does not exist in the operator path) with the correct RHDH PostgreSQL
+  # config BEFORE applying.  This avoids a double-reconciliation where the
+  # operator first deploys the workflow without persistence and then patches
+  # it, which creates duplicate ProcessDefinition entries in data-index with
+  # different casing (e.g. failswitch vs failSwitch) — the lowercase entry's
+  # /management/processes endpoint 404s and causes persistent "Failed to ping
+  # service" errors in the orchestrator plugin (RHDHBUGS-2184).
   local workflow_manifests
   for workflow in $ORCHESTRATOR_WORKFLOWS; do
     case "$workflow" in
@@ -725,13 +729,26 @@ orchestrator::deploy_workflows_operator() {
     local sf_file
     sf_file=$(find "${workflow_manifests}" -name '*sonataflow*' -type f | head -1)
     if [[ -n "$sf_file" ]]; then
-      yq eval -i 'del(.spec.persistence) | del(.status)' "$sf_file"
+      export _SF_SECRET="$pqsl_secret_name"
+      export _SF_UKEY="$pqsl_user_key"
+      export _SF_PKEY="$pqsl_password_key"
+      export _SF_SVC="$pqsl_svc_name"
+      export _SF_NS="$namespace"
+      yq eval -i '
+        del(.status) |
+        .spec.persistence.postgresql.secretRef.name = strenv(_SF_SECRET) |
+        .spec.persistence.postgresql.secretRef.userKey = strenv(_SF_UKEY) |
+        .spec.persistence.postgresql.secretRef.passwordKey = strenv(_SF_PKEY) |
+        .spec.persistence.postgresql.serviceRef.name = strenv(_SF_SVC) |
+        .spec.persistence.postgresql.serviceRef.namespace = strenv(_SF_NS) |
+        .spec.persistence.postgresql.serviceRef.databaseName = "postgres"
+      ' "$sf_file"
+      unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS
     fi
     oc apply -f "${workflow_manifests}" -n "$namespace"
 
-    _orchestrator::patch_workflow_postgres "$namespace" "$workflow" \
-      "$pqsl_secret_name" "$pqsl_user_key" "$pqsl_password_key" \
-      "$pqsl_svc_name" "$namespace"
+    _orchestrator::wait_for_sonataflow_reconciliation "$namespace" "$workflow" 60
+    oc rollout status deployment/"$workflow" -n "$namespace" --timeout=600s
   done
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
@@ -752,30 +769,44 @@ orchestrator::deploy_workflows_operator() {
     echo ""
   done
 
-  # ── Wait for Backstage → SonataFlow connectivity to stabilise ──
-  # After workflow CRs are applied the SonataFlow operator reconciles
-  # data-index (updated ConfigMap, Knative resources, etc.) which can
-  # cause a brief pod restart.  A fixed "sleep 30" is not enough because
-  # the restart window is unpredictable.  Instead we poll until the
-  # Backstage pod can actually reach data-index through the K8s Service
-  # (ClusterIP:80 → pod:8080).  This catches DNS, NetworkPolicy, and
-  # pod-restart issues that the previous oc-exec diagnostic missed
-  # because oc-exec bypasses the Service entirely.
+  # ── Restart Backstage NOW that all SonataFlow services exist ──
+  # The orchestrator plugins ConfigMap was patched earlier by
+  # enable_plugins_operator, but the Backstage pod was NOT restarted at
+  # that time.  Deferring the restart to this point is critical: on
+  # OpenShift CI clusters, a Backstage pod that starts before the
+  # SonataFlow Services exist gets a persistent ECONNREFUSED to every
+  # SonataFlow ClusterIP — even after the Services become Ready.
+  # Restarting Backstage after the Services are live ensures the new
+  # pod's network namespace has working OVN/kube-proxy rules for them.
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
     backstage_deployment="backstage-rhdh-rbac"
   fi
 
-  # Re-verify data-index is still running after workflow reconciliation
-  k8s_wait::deployment "$namespace" sonataflow-platform-data-index-service 5
+  log::info "Recycling $backstage_deployment pod to load orchestrator plugins..."
+  oc get pods -n "$namespace" --no-headers 2> /dev/null \
+    | grep "$backstage_deployment" | awk '{print $1}' \
+    | xargs -r oc delete pod -n "$namespace" --grace-period=30 2> /dev/null || true
+  sleep 5
 
-  local max_conn_attempts=18 # 18 × 10 s = 3 min
+  local bs_rc=0
+  k8s_wait::deployment "$namespace" "$backstage_deployment" 15 || bs_rc=$?
+
+  if [[ "$bs_rc" -ne 0 ]]; then
+    log::error "$backstage_deployment failed readiness after restart"
+    log::info "Backstage plugin initialization logs:"
+    oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend 2> /dev/null \
+      | grep -iE "initializ|Plugin|started|complete|error|fatal|ECONNREFUSED|timeout" \
+      | grep -iv "WorkflowCacheService" | head -60 || log::warn "  Could not retrieve logs"
+    return 1
+  fi
+
+  # ── Verify Backstage → data-index connectivity via the K8s Service ──
+  local max_conn_attempts=12 # 12 × 10 s = 2 min
   local conn_ok=false
 
   log::info "Verifying Backstage → data-index connectivity (via Service)..."
-  # Use Node.js (guaranteed in backstage-backend) instead of curl (may
-  # not be present in minimal UBI images).
   local node_probe
   node_probe=$(
     cat << 'PROBE'
@@ -815,8 +846,27 @@ PROBE
     return 1
   fi
 
-  # Allow the WorkflowCacheService a few more seconds to ingest newly
-  # discovered workflows (it polls every 5 s).
+  # ── Verify Backstage → workflow service connectivity ──
+  # The same OVN/kube-proxy issue that affected data-index can affect workflow
+  # Services.  Verify each workflow is reachable from the Backstage pod.
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    local wf_ok=false
+    for ((wf_attempt = 1; wf_attempt <= 6; wf_attempt++)); do
+      if oc exec -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend -- \
+        node -e "const http=require('http');const r=http.get('http://${wf}/q/health',{timeout:5000},s=>{process.exit(s.statusCode<500?0:1)});r.on('error',()=>process.exit(1));r.on('timeout',()=>{r.destroy();process.exit(1)})" > /dev/null 2>&1; then
+        wf_ok=true
+        log::success "Backstage can reach workflow '${wf}' (attempt $wf_attempt)"
+        break
+      fi
+      sleep 5
+    done
+    if [[ "$wf_ok" != "true" ]]; then
+      log::warn "Backstage cannot reach workflow '${wf}' — tests for this workflow may fail"
+    fi
+  done
+
+  # The WorkflowCacheService polls data-index every 5 s.  Give it a
+  # couple of cycles to discover the newly available workflows.
   log::info "Waiting 15 s for orchestrator plugin cache to discover workflows..."
   sleep 15
 
@@ -948,43 +998,14 @@ orchestrator::enable_plugins_operator() {
 
   log::info "Merged dynamic plugins configmap updated"
 
-  # Restart Backstage so the init container re-reads the patched ConfigMap and
-  # loads the orchestrator plugins.  At this point SonataFlow services do not
-  # exist yet, but the orchestrator plugin handles that gracefully and will
-  # discover workflows once they are deployed (it polls data-index every 5 s).
-  local backstage_deployment="backstage-rhdh"
-  if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
-    backstage_deployment="backstage-rhdh-rbac"
-  fi
+  # Do NOT restart Backstage here.  The restart is deferred to
+  # deploy_workflows_operator so that when the new pod starts all
+  # SonataFlow services (data-index, jobs-service, workflows) already
+  # exist.  Restarting now causes a persistent ECONNREFUSED because
+  # the Backstage pod's OVN/kube-proxy datapath never picks up
+  # Services created after the pod's network namespace was initialised
+  # (observed on OpenShift CI clusters – RHDHBUGS-2184).
 
-  # Delete the existing pod instead of `oc rollout restart`.  A rollout restart
-  # creates a new ReplicaSet while keeping old pods alive (maxUnavailable=0),
-  # doubling resource usage: 6 containers (2x backstage-backend, 2x llama-stack,
-  # 2x lightspeed-core).  On resource-constrained CI clusters this prevents
-  # either pod from finishing initialization within the 15-minute timeout.
-  # Deleting the pod lets the existing ReplicaSet recreate exactly one pod that
-  # re-runs init containers and picks up the patched ConfigMap.
-  log::info "Recycling $backstage_deployment pod to load orchestrator plugins..."
-  oc delete pods -n "$namespace" \
-    -l "rhdh.redhat.com/app=backstage-${backstage_deployment}" \
-    --grace-period=30 2> /dev/null \
-    || oc get pods -n "$namespace" --no-headers 2> /dev/null \
-    | grep "$backstage_deployment" | awk '{print $1}' \
-      | xargs -r oc delete pod -n "$namespace" --grace-period=30 2> /dev/null || true
-  sleep 5
-
-  local bs_rc=0
-  k8s_wait::deployment "$namespace" "$backstage_deployment" 15 || bs_rc=$?
-
-  if [[ "$bs_rc" -ne 0 ]]; then
-    log::error "$backstage_deployment failed readiness after restart"
-    log::info "Backstage plugin initialization logs:"
-    oc logs -n "$namespace" "deployment/$backstage_deployment" -c backstage-backend 2> /dev/null \
-      | grep -iE "initializ|Plugin|started|complete|error|fatal|ECONNREFUSED|timeout" \
-      | grep -iv "WorkflowCacheService" | head -60 || log::warn "  Could not retrieve logs"
-    return 1
-  fi
-
-  log::success "Orchestrator plugins enabled successfully"
+  log::success "Orchestrator plugins ConfigMap updated (restart deferred to workflow deployment)"
   return 0
 }
