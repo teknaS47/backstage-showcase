@@ -539,11 +539,6 @@ cluster_setup_ocp_operator() {
   operator::install_postgres_ocp
   operator::install_serverless
   operator::install_serverless_logic
-
-  # The Helm path deploys Knative Eventing via the orchestrator-infra chart.
-  # The operator path must create the KnativeEventing CR explicitly so the
-  # SonataFlow operator can route workflow events to data-index.
-  _orchestrator::ensure_knative_eventing
 }
 
 cluster_setup_k8s_operator() {
