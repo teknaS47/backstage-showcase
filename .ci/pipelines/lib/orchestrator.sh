@@ -760,6 +760,7 @@ orchestrator::deploy_workflows_operator() {
       export _SF_PKEY="$pqsl_password_key"
       export _SF_SVC="$pqsl_svc_name"
       export _SF_NS="$namespace"
+      export _SF_DI_URL="http://sonataflow-platform-data-index-service.${namespace}.svc.cluster.local"
       yq eval -i '
         del(.status) |
         .spec.persistence.postgresql.secretRef.name = strenv(_SF_SECRET) |
@@ -767,9 +768,10 @@ orchestrator::deploy_workflows_operator() {
         .spec.persistence.postgresql.secretRef.passwordKey = strenv(_SF_PKEY) |
         .spec.persistence.postgresql.serviceRef.name = strenv(_SF_SVC) |
         .spec.persistence.postgresql.serviceRef.namespace = strenv(_SF_NS) |
-        .spec.persistence.postgresql.serviceRef.databaseName = "postgres"
+        .spec.persistence.postgresql.serviceRef.databaseName = "postgres" |
+        .spec.podTemplate.container.env += [{"name": "K_SINK", "value": strenv(_SF_DI_URL)}]
       ' "$sf_file"
-      unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS
+      unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS _SF_DI_URL
     fi
     oc apply -f "${workflow_manifests}" -n "$namespace"
 
@@ -779,12 +781,12 @@ orchestrator::deploy_workflows_operator() {
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
 
-  log::info "Workflow pod environment (KOGITO_DATA_INDEX_URL / K_SINK):"
+  log::info "Workflow pod environment (K_SINK / KOGITO_DATA_INDEX_URL):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
     log::info "  $wf:"
     oc exec -n "$namespace" "deployment/$wf" -- env 2> /dev/null \
       | grep -iE "k_sink|kogito.*data.*index" \
-      || log::warn "    (no KOGITO_DATA_INDEX_URL — workflow status may not reach data-index)"
+      || log::warn "    K_SINK not found — workflow status events will not reach data-index!"
   done
 
   log::info "Data-index process definitions:"
@@ -799,10 +801,25 @@ orchestrator::deploy_workflows_operator() {
     backstage_deployment="backstage-rhdh-rbac"
   fi
 
-  log::info "Recycling $backstage_deployment pod to load orchestrator plugins..."
-  oc get pods -n "$namespace" --no-headers 2> /dev/null \
-    | grep "$backstage_deployment" | awk '{print $1}' \
-    | xargs -r oc delete pod -n "$namespace" --grace-period=30 2> /dev/null || true
+  log::info "Recycling $backstage_deployment to load orchestrator plugins..."
+  oc scale deployment/"$backstage_deployment" -n "$namespace" --replicas=0 2> /dev/null || true
+
+  local term_elapsed=0
+  while [[ $term_elapsed -lt 90 ]]; do
+    local pod_count=0
+    pod_count=$(oc get pods -n "$namespace" --no-headers 2> /dev/null \
+      | grep -c "$backstage_deployment") || true
+    if [[ "$pod_count" -eq 0 ]]; then
+      log::info "All $backstage_deployment pods terminated"
+      break
+    fi
+    sleep 5
+    term_elapsed=$((term_elapsed + 5))
+  done
+
+  oc patch deployment/"$backstage_deployment" -n "$namespace" --type=strategic \
+    -p '{"spec":{"strategy":{"type":"Recreate"}}}' 2> /dev/null || true
+  oc scale deployment/"$backstage_deployment" -n "$namespace" --replicas=1 2> /dev/null || true
   sleep 5
 
   local bs_rc=0
