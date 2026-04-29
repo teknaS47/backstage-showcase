@@ -761,6 +761,7 @@ orchestrator::deploy_workflows_operator() {
       export _SF_SVC="$pqsl_svc_name"
       export _SF_NS="$namespace"
       export _SF_DI_URL="http://sonataflow-platform-data-index-service.${namespace}.svc.cluster.local"
+      export _SF_SERVICE_URL="http://${workflow}.${namespace}.svc.cluster.local"
       yq eval -i '
         del(.status) |
         .spec.persistence.postgresql.secretRef.name = strenv(_SF_SECRET) |
@@ -769,9 +770,12 @@ orchestrator::deploy_workflows_operator() {
         .spec.persistence.postgresql.serviceRef.name = strenv(_SF_SVC) |
         .spec.persistence.postgresql.serviceRef.namespace = strenv(_SF_NS) |
         .spec.persistence.postgresql.serviceRef.databaseName = "postgres" |
-        .spec.podTemplate.container.env += [{"name": "K_SINK", "value": strenv(_SF_DI_URL)}]
+        .spec.podTemplate.container.env += [
+          {"name": "K_SINK", "value": strenv(_SF_DI_URL)},
+          {"name": "KOGITO_SERVICE_URL", "value": strenv(_SF_SERVICE_URL)}
+        ]
       ' "$sf_file"
-      unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS _SF_DI_URL
+      unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS _SF_DI_URL _SF_SERVICE_URL
     fi
     oc apply -f "${workflow_manifests}" -n "$namespace"
 
@@ -780,6 +784,24 @@ orchestrator::deploy_workflows_operator() {
   done
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
+
+  log::info "=== Workflow Service Diagnostics ==="
+  log::info "Services in namespace $namespace:"
+  oc get svc -n "$namespace" -o wide | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting services found"
+
+  log::info "Endpoints in namespace $namespace:"
+  oc get endpoints -n "$namespace" | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting endpoints found"
+
+  log::info "Service details:"
+  for wf in $ORCHESTRATOR_WORKFLOWS; do
+    if oc get svc "$wf" -n "$namespace" &> /dev/null; then
+      log::info "  Service '$wf' exists:"
+      oc get svc "$wf" -n "$namespace" -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}' && echo
+      oc get endpoints "$wf" -n "$namespace" -o jsonpath='{.subsets[*].addresses[*].ip}' && echo
+    else
+      log::warn "  Service '$wf' NOT FOUND"
+    fi
+  done
 
   log::info "Workflow pod environment (K_SINK / KOGITO_DATA_INDEX_URL):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
@@ -790,10 +812,17 @@ orchestrator::deploy_workflows_operator() {
   done
 
   log::info "Data-index process definitions:"
-  oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+  local dataindex_response
+  dataindex_response=$(oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
     curl -sf "http://localhost:8080/graphql" \
     -H 'content-type: application/json' \
-    -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null || log::warn "Could not query data-index GraphQL"
+    -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null) || log::warn "Could not query data-index GraphQL"
+
+  if [[ -n "$dataindex_response" ]]; then
+    echo "$dataindex_response"
+    log::info "Checking serviceUrl format in data-index response:"
+    echo "$dataindex_response" | jq -r '.data.ProcessDefinitions[] | "  \(.id): serviceUrl=\(.serviceUrl)"' 2> /dev/null || log::warn "Could not parse GraphQL response"
+  fi
   echo ""
 
   local backstage_deployment="backstage-rhdh"
