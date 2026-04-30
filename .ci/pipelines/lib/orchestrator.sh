@@ -803,12 +803,12 @@ orchestrator::deploy_workflows_operator() {
     fi
   done
 
-  log::info "Workflow pod environment (K_SINK / KOGITO_DATA_INDEX_URL):"
+  log::info "Workflow pod environment (K_SINK / KOGITO_SERVICE_URL / KOGITO_DATA_INDEX_URL):"
   for wf in $ORCHESTRATOR_WORKFLOWS; do
     log::info "  $wf:"
     oc exec -n "$namespace" "deployment/$wf" -- env 2> /dev/null \
-      | grep -iE "k_sink|kogito.*data.*index" \
-      || log::warn "    K_SINK not found — workflow status events will not reach data-index!"
+      | grep -iE "k_sink|kogito" \
+      || log::warn "    No KOGITO variables found!"
   done
 
   log::info "Data-index process definitions:"
@@ -1030,7 +1030,7 @@ orchestrator::enable_plugins_operator() {
   if ! merged_yaml=$(yq eval-all '
     select(fileIndex == 0) as $default |
     select(fileIndex == 1) as $custom |
-    (($default.plugins // []) + ($custom.plugins // [])) | map(select(has("package"))) | group_by(.package) | map(.[-1]) | map(select((.package | contains("{{inherit}}") | not) or has("pluginConfig"))) as $plugins |
+    (($default.plugins // []) + ($custom.plugins // [])) | map(select(has("package"))) | group_by(.package) | map(.[-1]) | map(select(.package | contains("{{inherit}}") | not)) as $plugins |
     {
       "includes": (($default.includes // []) + ($custom.includes // [])) | unique,
       "plugins": $plugins
