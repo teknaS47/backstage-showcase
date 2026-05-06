@@ -244,10 +244,6 @@ describe("Dynamic Plugin Wrappers", () => {
 
     const externalDynamicPluginsConfig: DynamicPluginConfig[] = [
       {
-        package: "@pataknight/backstage-plugin-rhdh-qe-theme@0.5.5",
-        disabled: false,
-      },
-      {
         package: "@backstage-community/plugin-todo@0.2.42",
       },
       {
@@ -257,10 +253,6 @@ describe("Dynamic Plugin Wrappers", () => {
       {
         package:
           "@red-hat-developer-hub/backstage-plugin-application-listener-test@0.6.0",
-      },
-      {
-        package:
-          "@red-hat-developer-hub/backstage-plugin-global-header-test@0.7.0",
       },
       {
         package:
