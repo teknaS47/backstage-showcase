@@ -54,22 +54,6 @@ global:
                 apiKey: "temp"
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-jenkins:bs_1.49.4__0.30.0"
         disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-notifications
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-notifications-backend-dynamic
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-notifications-backend-module-email-dynamic
-        disabled: false
-        pluginConfig:
-          notifications:
-            processors:
-              email:
-                transportConfig:
-                sender: "temp"
-      - package: ./dynamic-plugins/dist/backstage-plugin-signals-backend-dynamic
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-signals
-        disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-sonarqube-backend:bs_1.49.4__1.1.0"
         disabled: false
         pluginConfig:
@@ -83,18 +67,6 @@ global:
         disabled: false
       - package: ./dynamic-plugins/dist/red-hat-developer-hub-backstage-plugin-dynamic-home-page
         disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-techdocs-backend-dynamic
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-techdocs
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-techdocs-module-addons-contrib
-        disabled: false
-        pluginConfig:
-          dynamicPlugins:
-            frontend:
-              backstage.plugin-techdocs-module-addons-contrib:
-                techdocsAddons:
-                  - importName: ReportIssue
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/pagerduty-backstage-plugin:bs_1.49.4__0.18.0"
         disabled: true
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/pagerduty-backstage-plugin-backend:bs_1.49.4__0.11.0"
@@ -109,8 +81,6 @@ global:
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-gerrit:bs_1.49.4__0.2.19"
         disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-scaffolder-backend-module-utils:bs__1.49.4__4.1.2"
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-community-plugin-scaffolder-backend-module-kubernetes-dynamic
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-scaffolder-backend-module-regex-dynamic
         disabled: false
@@ -155,8 +125,6 @@ global:
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-jfrog-artifactory:bs_1.49.4__1.28.0"
         disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-lighthouse:bs_1.49.4__0.20.0"
-        disabled: false
-      - package: ./dynamic-plugins/dist/backstage-community-plugin-analytics-provider-segment
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-scaffolder-relation-processor-dynamic
         disabled: false
