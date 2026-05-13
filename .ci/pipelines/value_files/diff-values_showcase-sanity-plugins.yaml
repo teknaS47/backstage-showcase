@@ -4,6 +4,19 @@ global:
       #  sanity check https://issues.redhat.com/browse/RHIDP-5301
       - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-gitlab-org-dynamic
         disabled: false
+        pluginConfig:
+          catalog:
+            providers:
+              gitlab:
+                orgProvider:
+                  host: temp
+                  schedule:
+                    frequency:
+                      hours: 24
+                    initialDelay:
+                      seconds: 15
+                    timeout:
+                      minutes: 15
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-github-insights:bs_1.49.4__3.5.0"
         disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-security-insights:bs_1.49.4__3.3.1"
@@ -12,7 +25,7 @@ global:
         disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/immobiliarelabs-backstage-plugin-gitlab:bs_1.49.4__7.0.1"
         disabled: false
-      - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-backstage-plugin-argo-cd-backend:bs_1.49.4__4.8.0"
         disabled: false
         pluginConfig:
           argocd:
@@ -23,7 +36,7 @@ global:
                 instances:
                   - name: argoInstance1
                     url: "temp"
-      - package: ./dynamic-plugins/dist/roadiehq-scaffolder-backend-argocd-dynamic
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-scaffolder-backend-argocd:bs_1.49.4__1.8.1"
         disabled: true
         pluginConfig:
           argocd:
@@ -37,7 +50,7 @@ global:
                     token: "temp"
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd:bs_1.49.4__2.8.0"
         disabled: false
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-azure:bs_1.49.4__0.2.19'
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-azure:bs_1.49.4__0.2.19"
         disabled: false
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-azure-devops-backend:bs_1.49.4__0.27.0"
         disabled: false
@@ -80,7 +93,7 @@ global:
               subDomain: "temp"
       - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-gerrit:bs_1.49.4__0.2.19"
         disabled: false
-      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-scaffolder-backend-module-utils:bs__1.49.4__4.1.2"
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/roadiehq-scaffolder-backend-module-utils:bs_1.49.4__4.1.2"
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-scaffolder-backend-module-regex-dynamic
         disabled: false
@@ -154,7 +167,7 @@ global:
             providers:
               ldapOrg:
                 default:
-                  target: temp
+                  target: ldap://temp
                   bind:
                     dn: temp
                     secret: temp
@@ -176,5 +189,22 @@ global:
                       minutes: 15
       - package: ./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-pingidentity-dynamic
         disabled: false
+        pluginConfig:
+          catalog:
+            providers:
+              pingIdentityOrg:
+                default:
+                  apiPath: temp
+                  authPath: temp
+                  envId: temp
+                  clientId: temp
+                  clientSecret: temp
+                  schedule:
+                    frequency:
+                      hours: 24
+                    initialDelay:
+                      seconds: 15
+                    timeout:
+                      minutes: 15
 orchestrator:
   enabled: true
