@@ -778,10 +778,10 @@ orchestrator::deploy_workflows_operator() {
         .spec.persistence.postgresql.serviceRef.name = strenv(_SF_SVC) |
         .spec.persistence.postgresql.serviceRef.namespace = strenv(_SF_NS) |
         .spec.persistence.postgresql.serviceRef.databaseName = "postgres" |
-        .spec.podTemplate.container.env += [
-          {"name": "K_SINK", "value": strenv(_SF_DI_URL)},
-          {"name": "KOGITO_SERVICE_URL", "value": strenv(_SF_SERVICE_URL)}
-        ]
+        .spec.podTemplate.container.env = (
+          [.spec.podTemplate.container.env[] | select(.name != "K_SINK" and .name != "KOGITO_SERVICE_URL")] +
+          [{"name": "K_SINK", "value": strenv(_SF_DI_URL)}, {"name": "KOGITO_SERVICE_URL", "value": strenv(_SF_SERVICE_URL)}]
+        )
       ' "$sf_file"
       unset _SF_SECRET _SF_UKEY _SF_PKEY _SF_SVC _SF_NS _SF_DI_URL _SF_SERVICE_URL
     fi

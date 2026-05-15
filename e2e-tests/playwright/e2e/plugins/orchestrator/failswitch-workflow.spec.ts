@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "@support/coverage/test";
 import { UIhelper } from "../../../utils/ui-helper";
 import { Common } from "../../../utils/common";
 import { Orchestrator } from "../../../support/pages/orchestrator";
@@ -24,7 +24,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Failswitch workflow execution and workflow tab validation", async () => {
-    test.setTimeout(1200000); // 20 minutes: login + 3 sequential workflow runs each up to 5 min
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("OK");
@@ -32,7 +31,7 @@ test.describe("Orchestrator failswitch workflow tests", () => {
     await orchestrator.reRunFailSwitchWorkflow("Wait");
     await orchestrator.abortWorkflow();
     await orchestrator.reRunFailSwitchWorkflow("KO");
-    await orchestrator.validateCurrentWorkflowStatus("Failed", 300000);
+    await orchestrator.validateCurrentWorkflowStatus("Failed");
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("Wait");
@@ -43,7 +42,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Test abort workflow", async () => {
-    test.setTimeout(360000); // 6 minutes: login + up to 5 min for workflow to show Running + abort
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("Wait");
@@ -51,7 +49,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Test Running status validations", async () => {
-    test.setTimeout(360000); // 6 minutes: login + up to 5 min for workflow to show Running
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("Wait");
@@ -59,7 +56,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Test Failed status validations", async () => {
-    test.setTimeout(360000); // 6 minutes: login + up to 5 min for workflow to reach Failed
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("KO");
@@ -67,7 +63,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Test Completed status validations", async () => {
-    test.setTimeout(360000); // 6 minutes: login + up to 5 min for workflow to reach Completed
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("OK");
@@ -75,7 +70,7 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   });
 
   test("Test rerunning from failure point using failswitch workflow", async ({}, testInfo) => {
-    test.setTimeout(1200000); // 20 minutes: pod restarts + 60s sleep + two workflow status waits (5 min each)
+    test.setTimeout(240000); // 4 minutes: pod restarts + 60s sleep + failure/recovery time
     const ns = testInfo.project.name;
 
     test.skip(!ns, "NAME_SPACE not set");
@@ -88,13 +83,13 @@ test.describe("Orchestrator failswitch workflow tests", () => {
       await uiHelper.openSidebar("Orchestrator");
       await orchestrator.selectFailSwitchWorkflowItem();
       await orchestrator.runFailSwitchWorkflow("Wait");
-      await orchestrator.validateCurrentWorkflowStatus("Failed", 300000); // up to 5 min: 60s sleep + time to fail
+      await orchestrator.validateCurrentWorkflowStatus("Failed"); // 2 minutes: 60s sleep + time to fail
 
       await patchHttpbin(ns!, originalHttpbin);
       await restartAndWait(ns!);
 
       await orchestrator.reRunOnFailure("From failure point");
-      await orchestrator.validateCurrentWorkflowStatus("Completed", 300000);
+      await orchestrator.validateCurrentWorkflowStatus("Completed");
     } catch (e) {
       test.info().annotations.push({
         type: "test-error",
@@ -116,7 +111,6 @@ test.describe("Orchestrator failswitch workflow tests", () => {
   test("Failswitch links to another workflow and link works", async ({
     page,
   }) => {
-    test.setTimeout(360000); // 6 minutes: login + up to 5 min for workflow to complete + link validation
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectFailSwitchWorkflowItem();
     await orchestrator.runFailSwitchWorkflow("OK");
