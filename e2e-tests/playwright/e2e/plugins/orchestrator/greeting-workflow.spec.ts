@@ -23,6 +23,7 @@ test.describe("Orchestrator greeting workflow tests", () => {
   });
 
   test("Greeting workflow execution and workflow tab validation", async () => {
+    test.setTimeout(300000); // 5 minutes: login + workflow execution + validation
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectGreetingWorkflowItem();
     await orchestrator.runGreetingWorkflow();
@@ -31,6 +32,7 @@ test.describe("Orchestrator greeting workflow tests", () => {
   });
 
   test("Greeting workflow run details validation", async () => {
+    test.setTimeout(300000); // 5 minutes: login + two workflow runs + details validation
     await uiHelper.openSidebar("Orchestrator");
     await orchestrator.selectGreetingWorkflowItem();
     await orchestrator.runGreetingWorkflow();

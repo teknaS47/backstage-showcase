@@ -1163,6 +1163,7 @@ test.describe.serial("Test Orchestrator RBAC", () => {
     });
 
     test("rhdh-qe user runs greeting workflow and captures instance ID", async () => {
+      test.setTimeout(180000); // 3 minutes: login + workflow run + instance URL capture
       await uiHelper.goToPageUrl("/orchestrator");
       await uiHelper.verifyHeading("Workflows");
 
@@ -1193,7 +1194,9 @@ test.describe.serial("Test Orchestrator RBAC", () => {
       await finalRunButton.click();
 
       // Wait for workflow to complete and capture instance ID from URL
-      await page.waitForURL(/\/orchestrator\/instances\/[a-f0-9-]+/);
+      await page.waitForURL(/\/orchestrator\/instances\/[a-f0-9-]+/, {
+        timeout: 120000,
+      });
       const url = page.url();
       const match = url.match(/\/orchestrator\/instances\/([a-f0-9-]+)/);
       expect(match).not.toBeNull();
