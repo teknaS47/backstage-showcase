@@ -751,6 +751,8 @@ orchestrator::deploy_workflows_operator() {
     case "$workflow" in
       greeting) workflow_manifests="${GREETING_MANIFESTS}" ;;
       failswitch) workflow_manifests="${FAILSWITCH_MANIFESTS}" ;;
+      sample-retry-test) workflow_manifests="${SAMPLE_RETRY_TEST_MANIFESTS}" ;;
+      test-object-type-uiprops) workflow_manifests="${TEST_OBJECT_TYPE_UIPROPS_MANIFESTS}" ;;
       *)
         log::error "Unknown workflow: $workflow"
         return 1

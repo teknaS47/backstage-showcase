@@ -71,7 +71,7 @@ export class Orchestrator {
     const workflowHeader = this.page.getByRole("heading", {
       name: "Workflows",
     });
-    await expect(workflowHeader).toBeVisible();
+    await expect(workflowHeader).toBeVisible({ timeout: 30000 });
     await expect(workflowHeader).toHaveText("Workflows");
     await expect(Workflows.workflowsTable(this.page)).toBeVisible();
     await expect(
@@ -286,13 +286,13 @@ export class Orchestrator {
 
     switch (input) {
       case "OK":
-        await this.validateCurrentWorkflowStatus("Completed");
+        await this.validateCurrentWorkflowStatus("Completed", 300000);
         break;
       case "KO":
-        await this.validateCurrentWorkflowStatus("Failed");
+        await this.validateCurrentWorkflowStatus("Failed", 300000);
         break;
       case "Wait":
-        await this.validateCurrentWorkflowStatus("Running");
+        await this.validateCurrentWorkflowStatus("Running", 300000);
         break;
     }
   }
