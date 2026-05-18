@@ -26,7 +26,7 @@ export class Orchestrator {
     const workflowHeader = this.page.getByRole("heading", {
       name: "Workflows",
     });
-    await expect(workflowHeader).toBeVisible();
+    await expect(workflowHeader).toBeVisible({ timeout: 30000 });
     await expect(workflowHeader).toHaveText("Workflows");
     await expect(Workflows.workflowsTable(this.page)).toBeVisible();
     // Wait for the workflow to be visible with explicit timeout for RBAC permission propagation
@@ -264,7 +264,7 @@ export class Orchestrator {
     const workflowHeader = this.page.getByRole("heading", {
       name: "Workflows",
     });
-    await expect(workflowHeader).toBeVisible();
+    await expect(workflowHeader).toBeVisible({ timeout: 30000 });
     await expect(workflowHeader).toHaveText("Workflows");
     await expect(Workflows.workflowsTable(this.page)).toBeVisible();
     // Wait for the workflow to be visible with explicit timeout for RBAC permission propagation

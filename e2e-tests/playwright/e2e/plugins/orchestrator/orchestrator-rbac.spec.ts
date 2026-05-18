@@ -1163,6 +1163,7 @@ test.describe.serial("Test Orchestrator RBAC", () => {
     });
 
     test("rhdh-qe user runs greeting workflow and captures instance ID", async () => {
+      test.setTimeout(180000); // 3 minutes: workflow run + up to 120s URL redirect wait
       await uiHelper.goToPageUrl("/orchestrator");
       await uiHelper.verifyHeading("Workflows");
 
