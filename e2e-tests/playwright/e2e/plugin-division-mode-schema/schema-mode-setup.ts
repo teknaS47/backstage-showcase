@@ -51,6 +51,9 @@ export class SchemaModeTestSetup {
   }
 
   private getSecretName(): string {
+    if (this.installMethod === "operator") {
+      return "postgres-cred";
+    }
     return `${this.releaseName}-postgresql`;
   }
 
@@ -127,16 +130,43 @@ export class SchemaModeTestSetup {
     );
     console.log(`Updated secret ${secretName} with schema-mode credentials`);
 
-    // 2. Ensure POSTGRES_* env vars are set in the deployment
-    await this.ensureDeploymentEnvVars(deploymentName, secretName);
+    // 2. Ensure POSTGRES_* env vars are set in the deployment.
+    // For operator: env vars are injected via extraEnvs.secrets in the Backstage CR,
+    // so we only update the secret (step 1). Patching the Deployment directly
+    // conflicts with operator reconciliation.
+    if (this.installMethod !== "operator") {
+      await this.ensureDeploymentEnvVars(deploymentName, secretName);
+    } else {
+      console.log(
+        "Skipping Deployment env var patching (operator injects env vars from secret via extraEnvs.secrets)",
+      );
+    }
 
     // 3. Update app-config ConfigMap for schema mode
     await this.updateAppConfigForSchemaMode();
 
-    // 4. Restart to apply changes
-    console.log("Restarting RHDH to apply schema mode configuration...");
-    await this.kubeClient.restartDeployment(deploymentName, this.namespace);
-    console.log("RHDH restart completed");
+    // 4. Restart to apply changes (retry up to 3 times for slow ephemeral volume PVC creation)
+    const maxRestartAttempts = 3;
+    for (let attempt = 1; attempt <= maxRestartAttempts; attempt++) {
+      try {
+        console.log(
+          `Restarting RHDH to apply schema mode configuration (attempt ${attempt}/${maxRestartAttempts})...`,
+        );
+        await this.kubeClient.restartDeployment(deploymentName, this.namespace);
+        console.log("RHDH restart completed");
+        break;
+      } catch (restartError) {
+        if (attempt === maxRestartAttempts) throw restartError;
+        const msg =
+          restartError instanceof Error
+            ? restartError.message
+            : String(restartError);
+        console.warn(
+          `Restart attempt ${attempt} failed (${msg}), retrying in 30s...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 30000));
+      }
+    }
   }
 
   private async ensureDeploymentEnvVars(
