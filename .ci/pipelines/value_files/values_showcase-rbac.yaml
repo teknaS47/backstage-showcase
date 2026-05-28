@@ -199,6 +199,8 @@ upstream:
           secretName: '{{ printf "%s-dynamic-plugins-registry-auth" .Release.Name }}'
       - name: npmcacache
         emptyDir: {}
+      - name: extensions-catalog
+        emptyDir: {}
       - name: temp
         emptyDir: {}
 
