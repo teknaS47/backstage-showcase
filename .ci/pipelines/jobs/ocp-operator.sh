@@ -28,10 +28,6 @@ initiate_operator_deployments() {
   oc apply -f /tmp/configmap-dynamic-plugins.yaml -n "${NAME_SPACE}"
   deploy_redis_cache "${NAME_SPACE}"
   deploy_rhdh_operator "${NAME_SPACE}" "${DIR}/resources/rhdh-operator/rhdh-start.yaml"
-  # TODO: https://issues.redhat.com/browse/RHDHBUGS-2184 fix orchestrator workflows deployment on operator
-  # enable_orchestrator_plugins_op "${NAME_SPACE}"
-  # deploy_orchestrator_workflows_operator "${NAME_SPACE}"
-  log::warn "Skipping orchestrator plugins and workflows deployment on Operator $NAME_SPACE deployment"
 
   namespace::configure "${NAME_SPACE_RBAC}"
   config::prepare_operator_app_config "${DIR}/resources/config_map/app-config-rhdh-rbac.yaml"
@@ -41,15 +37,10 @@ initiate_operator_deployments() {
   oc apply -f /tmp/configmap-dynamic-plugins-rbac.yaml -n "${NAME_SPACE_RBAC}"
   wait_for_crunchy_crd || return 1
   deploy_rhdh_operator "${NAME_SPACE_RBAC}" "${DIR}/resources/rhdh-operator/rhdh-start-rbac.yaml"
-  # TODO: https://issues.redhat.com/browse/RHDHBUGS-2184 fix orchestrator workflows deployment on operator
-  # enable_orchestrator_plugins_op "${NAME_SPACE_RBAC}"
-  # deploy_orchestrator_workflows_operator "${NAME_SPACE_RBAC}"
-  log::warn "Skipping orchestrator plugins and workflows deployment on Operator $NAME_SPACE_RBAC deployment"
 }
 
-# OSD-GCP specific operator deployment that skips orchestrator workflows
 initiate_operator_deployments_osd_gcp() {
-  log::info "Initiating Operator-backed deployments on OSD-GCP (orchestrator disabled)"
+  log::info "Initiating Operator-backed deployments on OSD-GCP"
 
   namespace::configure "${NAME_SPACE}"
   deploy_test_backstage_customization_provider "${NAME_SPACE}"
@@ -65,9 +56,6 @@ initiate_operator_deployments_osd_gcp() {
   deploy_redis_cache "${NAME_SPACE}"
   deploy_rhdh_operator "${NAME_SPACE}" "${DIR}/resources/rhdh-operator/rhdh-start.yaml"
 
-  # Skip orchestrator plugins and workflows for OSD-GCP
-  log::warn "Skipping orchestrator plugins and workflows deployment on OSD-GCP environment"
-
   namespace::configure "${NAME_SPACE_RBAC}"
   config::prepare_operator_app_config "${DIR}/resources/config_map/app-config-rhdh-rbac.yaml"
   local rbac_rhdh_base_url="https://backstage-${RELEASE_NAME_RBAC}-${NAME_SPACE_RBAC}.${K8S_CLUSTER_ROUTER_BASE}"
@@ -81,9 +69,6 @@ initiate_operator_deployments_osd_gcp() {
   oc apply -f /tmp/configmap-dynamic-plugins-rbac.yaml -n "${NAME_SPACE_RBAC}"
   wait_for_crunchy_crd || return 1
   deploy_rhdh_operator "${NAME_SPACE_RBAC}" "${DIR}/resources/rhdh-operator/rhdh-start-rbac.yaml"
-
-  # Skip orchestrator plugins and workflows for OSD-GCP RBAC
-  log::warn "Skipping orchestrator plugins and workflows deployment on OSD-GCP RBAC environment"
 }
 
 run_operator_runtime_config_change_tests() {
@@ -149,9 +134,8 @@ handle_ocp_operator() {
 
   prepare_operator
 
-  # Use OSD-GCP specific deployment for osd-gcp jobs (orchestrator disabled)
   if [[ "${JOB_NAME}" =~ osd-gcp ]]; then
-    log::info "Detected OSD-GCP operator job, using OSD-GCP specific deployment (orchestrator disabled)"
+    log::info "Detected OSD-GCP operator job, using OSD-GCP specific deployment"
     initiate_operator_deployments_osd_gcp
   else
     initiate_operator_deployments
