@@ -185,6 +185,41 @@ npx playwright show-report .local-test/rhdh/.local-test/artifact_dir/showcase
 
 ---
 
+### Test tags
+
+Specs declare `@tag` markers via Playwright's native
+[test tags](https://playwright.dev/docs/test-annotations#tag-tests) — the `tag`
+option on `test` / `test.describe` (e.g.
+`test.describe("Smoke test", { tag: "@smoke" }, () => { ... })`). This keeps the
+tag out of the test title, so names stay stable for historical reporting while
+Playwright's `--grep` / `--grep-invert` filters still select tests by tag,
+letting CI or a local run target a subset.
+
+| Tag                  | Meaning                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `@layer3-equivalent` | A UI behavior in this spec also has a sibling Layer 3 component test (in `packages/app`). |
+| `@smoke`             | Fast, high-signal check suitable to run on every PR.                                      |
+| `@ga-plugin`         | Exercises a generally-available (GA) plugin.                                              |
+| `@non-ga-plugin`     | Exercises a tech-preview / dev-preview (non-GA) plugin.                                   |
+
+```bash
+# Run only smoke-tagged tests
+yarn playwright test --project=showcase --grep "@smoke"
+
+# Run everything except specs that already have a Layer 3 equivalent
+yarn playwright test --project=showcase --grep-invert "@layer3-equivalent"
+```
+
+In CI, set the `PLAYWRIGHT_GREP` environment variable (consumed by
+`.ci/pipelines/lib/testing.sh`) to apply the same filter to a job, e.g.
+`PLAYWRIGHT_GREP='@smoke'`.
+
+> **Note:** `@layer3-equivalent` marks overlap with Layer 3 coverage; it does
+> not remove the E2E spec. Whether to retire any duplicated E2E coverage is a
+> separate decision tracked elsewhere.
+
+---
+
 ### Configuration Options
 
 #### Job Types
