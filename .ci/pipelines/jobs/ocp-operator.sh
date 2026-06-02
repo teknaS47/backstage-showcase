@@ -129,8 +129,8 @@ run_operator_runtime_config_change_tests() {
 }
 
 handle_ocp_operator() {
-  export NAME_SPACE="showcase-operator"
-  export NAME_SPACE_RBAC="showcase-operator-rbac"
+  export NAME_SPACE="${NAME_SPACE:-showcase-operator}"
+  export NAME_SPACE_RBAC="${NAME_SPACE_RBAC:-showcase-operator-rbac}"
   export NAME_SPACE_RUNTIME="${NAME_SPACE_RUNTIME:-showcase-runtime}"
   export NAME_SPACE_POSTGRES_DB="${NAME_SPACE_POSTGRES_DB:-postgress-external-db}"
 
@@ -143,7 +143,8 @@ handle_ocp_operator() {
 
   cluster_setup_ocp_operator
 
-  prepare_operator "3"
+  local operator_install_retries=3
+  prepare_operator "$operator_install_retries"
 
   # Use OSD-GCP specific deployment for osd-gcp jobs (orchestrator disabled)
   if [[ "${JOB_NAME}" =~ osd-gcp ]]; then

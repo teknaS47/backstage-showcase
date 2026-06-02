@@ -429,9 +429,10 @@ _orchestrator::patch_workflow_postgres() {
   local database_name=${8:-}
   local database_schema=${9:-}
 
-  local db="${database_name:-postgres}"
-
-  local service_ref="{\"name\": \"$svc_name\", \"namespace\": \"$svc_namespace\", \"databaseName\": \"$db\""
+  local service_ref="{\"name\": \"$svc_name\", \"namespace\": \"$svc_namespace\""
+  if [[ -n "$database_name" ]]; then
+    service_ref+=", \"databaseName\": \"$database_name\""
+  fi
   if [[ -n "$database_schema" ]]; then
     service_ref+=", \"databaseSchema\": \"$database_schema\""
   fi
@@ -770,6 +771,9 @@ orchestrator::deploy_workflows_operator() {
       export _SF_NS="$namespace"
       export _SF_DI_URL="http://sonataflow-platform-data-index-service.${namespace}.svc.cluster.local"
       export _SF_SERVICE_URL="http://${workflow}.${namespace}.svc.cluster.local"
+      # Workflows persist into the default "postgres" database.
+      # Data-index and jobs-service use a dedicated "sonataflow" DB
+      # (see _orchestrator::create_sonataflow_platform).
       yq eval -i '
         del(.status) |
         .spec.persistence.postgresql.secretRef.name = strenv(_SF_SECRET) |
@@ -793,45 +797,47 @@ orchestrator::deploy_workflows_operator() {
 
   _orchestrator::wait_for_workflow_deployments "$namespace"
 
-  log::info "=== Workflow Service Diagnostics ==="
-  log::info "Services in namespace $namespace:"
-  oc get svc -n "$namespace" -o wide | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting services found"
+  if [[ "${ISRUNNINGLOCALDEBUG:-}" == "true" ]]; then
+    log::info "=== Workflow Service Diagnostics ==="
+    log::info "Services in namespace $namespace:"
+    oc get svc -n "$namespace" -o wide | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting services found"
 
-  log::info "Endpoints in namespace $namespace:"
-  oc get endpoints -n "$namespace" | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting endpoints found"
+    log::info "Endpoints in namespace $namespace:"
+    oc get endpoints -n "$namespace" | grep -E "NAME|failswitch|greeting" || log::warn "No failswitch/greeting endpoints found"
 
-  log::info "Service details:"
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    if oc get svc "$wf" -n "$namespace" &> /dev/null; then
-      log::info "  Service '$wf' exists:"
-      oc get svc "$wf" -n "$namespace" -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}' && echo
-      oc get endpoints "$wf" -n "$namespace" -o jsonpath='{.subsets[*].addresses[*].ip}' && echo
-    else
-      log::warn "  Service '$wf' NOT FOUND"
+    log::info "Service details:"
+    for wf in $ORCHESTRATOR_WORKFLOWS; do
+      if oc get svc "$wf" -n "$namespace" &> /dev/null; then
+        log::info "  Service '$wf' exists:"
+        oc get svc "$wf" -n "$namespace" -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}' && echo
+        oc get endpoints "$wf" -n "$namespace" -o jsonpath='{.subsets[*].addresses[*].ip}' && echo
+      else
+        log::warn "  Service '$wf' NOT FOUND"
+      fi
+    done
+
+    log::info "Workflow pod environment (K_SINK / KOGITO_SERVICE_URL / KOGITO_DATA_INDEX_URL):"
+    for wf in $ORCHESTRATOR_WORKFLOWS; do
+      log::info "  $wf:"
+      oc exec -n "$namespace" "deployment/$wf" -- env 2> /dev/null \
+        | grep -iE "k_sink|kogito" \
+        || log::warn "    No KOGITO variables found!"
+    done
+
+    log::info "Data-index process definitions:"
+    local dataindex_response
+    dataindex_response=$(oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
+      curl -sf "http://localhost:8080/graphql" \
+      -H 'content-type: application/json' \
+      -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null) || log::warn "Could not query data-index GraphQL"
+
+    if [[ -n "$dataindex_response" ]]; then
+      echo "$dataindex_response"
+      log::info "Checking serviceUrl format in data-index response:"
+      echo "$dataindex_response" | jq -r '.data.ProcessDefinitions[] | "  \(.id): serviceUrl=\(.serviceUrl)"' 2> /dev/null || log::warn "Could not parse GraphQL response"
     fi
-  done
-
-  log::info "Workflow pod environment (K_SINK / KOGITO_SERVICE_URL / KOGITO_DATA_INDEX_URL):"
-  for wf in $ORCHESTRATOR_WORKFLOWS; do
-    log::info "  $wf:"
-    oc exec -n "$namespace" "deployment/$wf" -- env 2> /dev/null \
-      | grep -iE "k_sink|kogito" \
-      || log::warn "    No KOGITO variables found!"
-  done
-
-  log::info "Data-index process definitions:"
-  local dataindex_response
-  dataindex_response=$(oc exec -n "$namespace" deploy/sonataflow-platform-data-index-service -- \
-    curl -sf "http://localhost:8080/graphql" \
-    -H 'content-type: application/json' \
-    -d '{"query":"{ ProcessDefinitions { id, version, endpoint, serviceUrl } }"}' 2> /dev/null) || log::warn "Could not query data-index GraphQL"
-
-  if [[ -n "$dataindex_response" ]]; then
-    echo "$dataindex_response"
-    log::info "Checking serviceUrl format in data-index response:"
-    echo "$dataindex_response" | jq -r '.data.ProcessDefinitions[] | "  \(.id): serviceUrl=\(.serviceUrl)"' 2> /dev/null || log::warn "Could not parse GraphQL response"
+    echo ""
   fi
-  echo ""
 
   local backstage_deployment="backstage-rhdh"
   if [[ "$namespace" == "${NAME_SPACE_RBAC}" ]]; then
@@ -874,6 +880,9 @@ orchestrator::deploy_workflows_operator() {
   local max_conn_attempts=12
   local conn_ok=false
 
+  # Assumes the backstage-backend container ships Node.js with the built-in
+  # "http" module, and that data-index is reachable via its in-namespace Service
+  # DNS name "sonataflow-platform-data-index-service".
   log::info "Verifying Backstage → data-index connectivity (via Service)..."
   local node_probe
   node_probe=$(
