@@ -275,10 +275,25 @@ ENV PATH="/opt/techdocs-venv/bin:${PATH}"
 # RHIDP-4220 - make Konflux preflight and EC checks happy - [check-container] Create a directory named /licenses and include all relevant licensing
 COPY $EXTERNAL_SOURCE_NESTED/LICENSE /licenses/
 
-# Copy script to gather dynamic plugins; copy embedded dynamic plugins to root folder; fix permissions
-# Bundled TypeScript .cjs (built from scripts/install-dynamic-plugins/src) replaces the previous Python implementation.
-COPY $EXTERNAL_SOURCE_NESTED/scripts/install-dynamic-plugins/dist/install-dynamic-plugins.cjs $EXTERNAL_SOURCE_NESTED/scripts/install-dynamic-plugins/install-dynamic-plugins.sh ./
-RUN chmod -R a+rx ./install-dynamic-plugins.*
+# Install the dynamic-plugins installer through yarn instead of fetching the
+# vendored .cjs from this repo. The `@red-hat-developer-hub/cli-module-install-dynamic-plugins`
+# dependency is declared in `packages/backend/package.json` so the bin
+# survives the `=== YARN WORKSPACES FOCUS ===` production install (the
+# earlier `=== DELETE DYNAMIC PLUGINS/* ===` step wipes
+# `dynamic-plugins/node_modules/` to keep only `dist/`). Hermeto already
+# prefetches yarn deps for the repo root (the `{"type": "yarn", "path": "."}`
+# entry in the fetch-deps call in scripts/local-hermeto-build.sh), so this
+# works in the hermetic Konflux build with no infra change. The build-time
+# `install --help` invocation fails the build if either the bin disappears
+# or the `install` subcommand the shim hardcodes is renamed/removed,
+# instead of letting that surface as a pod-start failure.
+RUN INSTALLER_BIN=/opt/app-root/src/node_modules/.bin/cli-module-install-dynamic-plugins \
+    && "$INSTALLER_BIN" install --help >/dev/null \
+    && printf '%s\n' \
+        '#!/bin/sh' \
+        "exec $INSTALLER_BIN install \"\$@\"" \
+        > /opt/app-root/src/install-dynamic-plugins.sh \
+    && chmod a+rx /opt/app-root/src/install-dynamic-plugins.sh
 
 # Fix for https://issues.redhat.com/browse/RHIDP-728
 RUN mkdir -p /opt/app-root/src/.npm; chown -R 1001:1001 /opt/app-root/src/.npm
